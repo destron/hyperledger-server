@@ -1,6 +1,8 @@
 defmodule Hyperledger.AccountControllerTest do
   use Hyperledger.ConnCase
   
+  alias Hyperledger.SecretStore
+  
   alias Hyperledger.Account
   alias Hyperledger.LogEntry
 
@@ -16,11 +18,17 @@ defmodule Hyperledger.AccountControllerTest do
   end
   
   test "POST /accounts creates log entry and account", %{ledger: ledger} do
-    {pk, _sk} = :crypto.generate_key(:ecdh, :secp256k1)
-    body = %{account: %{publicKey: Base.encode16(pk), ledgerHash: ledger.hash}}
+    {:ok, secret_store} = SecretStore.start_link
+    params = account_params(ledger.hash, secret_store)
+    
+    public_key = params.account[:publicKey]
+    secret_key = SecretStore.get(secret_store, public_key)
+    sig = sign(params, secret_key) |> Base.encode16
+    
     conn = conn()
        |> put_req_header("content-type", "application/json")
-       |> post("/accounts", Poison.encode!(body))
+       |> put_req_header("authorization", "Hyper Key=#{public_key}, Signature=#{sig}")
+       |> post("/accounts", Poison.encode!(params))
     
     assert conn.status == 201
     assert Repo.all(Account)  |> Enum.count == 2

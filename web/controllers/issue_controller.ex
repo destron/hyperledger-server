@@ -7,6 +7,7 @@ defmodule Hyperledger.IssueController do
   alias Hyperledger.LogEntry
   alias Hyperledger.Repo
   
+  plug Hyperledger.Authentication when action in [:create]
   plug :action
   
   def index(conn, params) do
@@ -16,11 +17,24 @@ defmodule Hyperledger.IssueController do
   end
 
   def create(conn, params) do
-    json_data = params |> Map.take(["issue"]) |> Poison.encode!
-    LogEntry.create(command: "issue/create", data: json_data)
-    issue = Repo.get(Issue, params["issue"]["uuid"])
-    conn
-    |> put_status(:created)
-    |> render :show, issue: issue
+    log_entry = %{
+      command: "issue/create",
+      data: conn.private.raw_json_body,
+      authentication_key: conn.assigns[:authentication_key],
+      signature: conn.assigns[:signature]
+    }
+    changeset = LogEntry.changeset(%LogEntry{}, log_entry)
+    
+    if changeset.valid? do
+      LogEntry.create(changeset)
+      issue = Repo.get(Issue, params["issue"]["uuid"])
+      conn
+      |> put_status(:created)
+      |> render :show, issue: issue
+    else
+      conn
+      |> put_status(:unprocessable_entity)
+      |> halt
+    end
   end
 end

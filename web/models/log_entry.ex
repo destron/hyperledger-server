@@ -42,12 +42,15 @@ defmodule Hyperledger.LogEntry do
     |> validate_authenticity
   end
   
-  def create(command: command, data: data) do
+  def create(changeset) do
     Repo.transaction fn ->
       id = (Repo.all(LogEntry) |> Enum.count) + 1
+      
+      log_entry =
+        changeset
+        |> change(%{id: id, view: 1})
+        |> Repo.insert
 
-      log_entry = %LogEntry{id: id, view: 1, command: command, data: data}
-                  |> Repo.insert        
       add_prepare(log_entry, Node.current.id, "temp_signature")
       Node.broadcast(log_entry.id, as_json(log_entry))
       log_entry

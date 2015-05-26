@@ -23,10 +23,7 @@ defmodule Hyperledger.LedgerController do
     changeset = LogEntry.changeset(%LogEntry{}, log_entry)
     
     if changeset.valid? do
-      LogEntry.create(
-        command: "ledger/create",
-        data: conn.private.raw_json_body
-      )
+      LogEntry.create(changeset)
       ledger = Repo.get(Ledger, params["ledger"]["hash"])
       conn
       |> put_status(:created)
