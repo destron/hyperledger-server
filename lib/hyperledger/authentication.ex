@@ -1,8 +1,7 @@
 defmodule Hyperledger.Authentication do
   @moduledoc """
-    Insppired by https://github.com/briksoftware/plug_auth
-    
-    Authenticates HTTP connection by public key and signature
+  Inspired by https://github.com/briksoftware/plug_auth
+  Authenticates HTTP connection by public key and signature.
   """
 
   @behaviour Plug
