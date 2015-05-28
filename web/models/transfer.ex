@@ -24,13 +24,14 @@ defmodule Hyperledger.Transfer do
   @required_fields ~w(uuid amount source_public_key destination_public_key)
   @optional_fields ~w()
 
-  def changeset(transfer, params \\ nil) do
+  def changeset(transfer, params \\ nil, auth_key) do
     transfer
     |> cast(params, @required_fields, @optional_fields)
     |> validate_existence(:source_public_key, Account)
     |> validate_existence(:destination_public_key, Account)
     |> validate_ledger_equality
     |> validate_number(:amount, greater_than: 0)
+    |> validate_inclusion(:source_public_key, [auth_key], message: "is not authorised")
   end
   
   def create(changeset) do
