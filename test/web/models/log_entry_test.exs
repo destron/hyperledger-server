@@ -2,7 +2,6 @@ defmodule Hyperledger.LogEntryModelTest do
   use Hyperledger.ModelCase
   
   import Mock
-  import Hyperledger.TestFactory
   
   alias Hyperledger.SecretStore
   

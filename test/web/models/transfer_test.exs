@@ -1,8 +1,6 @@
 defmodule Hyperledger.ModelTest.Transfer do
   use Hyperledger.ModelCase
-  
-  import Hyperledger.TestFactory
-  
+    
   alias Hyperledger.Account
   alias Hyperledger.Transfer
   alias Hyperledger.Issue
