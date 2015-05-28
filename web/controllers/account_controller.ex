@@ -26,7 +26,7 @@ defmodule Hyperledger.AccountController do
       authentication_key: conn.assigns[:authentication_key],
       signature: conn.assigns[:signature]
     }
-    changeset = LogEntry.changeset(%LogEntry{}, log_entry)
+    changeset = LogEntry.changeset(%LogEntry{}, :create, log_entry)
     
     if changeset.valid? do
       LogEntry.create(changeset)

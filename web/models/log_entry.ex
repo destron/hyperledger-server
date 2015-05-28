@@ -34,7 +34,7 @@ defmodule Hyperledger.LogEntry do
   @required_fields ~w(command data authentication_key signature)
   @optional_fields ~w()
   
-  def changeset(log_entry, params \\ nil) do
+  def changeset(log_entry, :create, params \\ nil) do
     log_entry
     |> cast(params, @required_fields, @optional_fields)
     |> validate_encoding(:authentication_key)
