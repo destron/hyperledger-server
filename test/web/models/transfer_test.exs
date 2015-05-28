@@ -18,7 +18,7 @@ defmodule Hyperledger.ModelTest.Transfer do
       |> Account.create
     
     %Issue{}
-    |> Issue.changeset(%{uuid: Ecto.UUID.generate, ledger_hash: ledger.hash, amount: 100})
+    |> Issue.changeset(%{uuid: Ecto.UUID.generate, ledger_hash: ledger.hash, amount: 100}, ledger.public_key)
     |> Issue.create
     
     params =

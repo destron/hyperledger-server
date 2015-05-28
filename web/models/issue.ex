@@ -22,11 +22,19 @@ defmodule Hyperledger.Issue do
   @required_fields ~w(uuid amount ledger_hash)
   @optional_fields ~w()
 
-  def changeset(transfer, params \\ nil) do
+  def changeset(transfer, params \\ nil, auth_key) do
+    auth_ledger = Repo.one(from l in Ledger, where: l.public_key == ^auth_key, select: l)
+    auth_hash = 
+      case auth_ledger do
+        nil -> []
+        ledger -> [ledger.hash]
+      end
+    
     transfer
     |> cast(params, @required_fields, @optional_fields)
     |> validate_existence(:ledger_hash, Ledger)
     |> validate_number(:amount, greater_than: 0)
+    |> validate_inclusion(:ledger_hash, auth_hash)
   end
   
   def create(changeset) do

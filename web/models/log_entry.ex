@@ -159,7 +159,7 @@ defmodule Hyperledger.LogEntry do
           |> Account.create
         
         "issue/create" ->
-          Issue.changeset(%Issue{}, params["issue"])
+          Issue.changeset(%Issue{}, params["issue"], log_entry.authentication_key)
           |> Issue.create
         
         "transfer/create" ->
