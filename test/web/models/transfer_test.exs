@@ -6,27 +6,27 @@ defmodule Hyperledger.ModelTest.Transfer do
   alias Hyperledger.Issue
   
   setup do
-    {:ok, ledger} = create_ledger
+    {:ok, asset} = create_asset
     {d_pk, _sk} = key_pair
     dest_key = Base.encode16(d_pk)
     
     destination =
       %Account{}
-      |> Account.changeset(%{public_key: dest_key, ledger_hash: ledger.hash})
+      |> Account.changeset(%{public_key: dest_key, asset_hash: asset.hash})
       |> Account.create
     
     %Issue{}
-    |> Issue.changeset(%{uuid: Ecto.UUID.generate, ledger_hash: ledger.hash, amount: 100}, ledger.public_key)
+    |> Issue.changeset(%{uuid: Ecto.UUID.generate, asset_hash: asset.hash, amount: 100}, asset.public_key)
     |> Issue.create
     
     params =
       %{
         uuid: Ecto.UUID.generate,
-        source_public_key: ledger.primary_account_public_key,
+        source_public_key: asset.primary_account_public_key,
         destination_public_key: destination.public_key,
         amount: 100
       }
-    {:ok, params: params, auth_key: ledger.primary_account_public_key}
+    {:ok, params: params, auth_key: asset.primary_account_public_key}
   end
 
   test "`changeset` validates that the amount is greater than zero", %{params: params, auth_key: source_key} do
@@ -47,9 +47,9 @@ defmodule Hyperledger.ModelTest.Transfer do
     assert cs.valid? == false
   end
   
-  test "`changeset` validates that the accounts' ledger is the same", %{params: params, auth_key: source_key} do
-    {:ok, alt_ledger} = create_ledger("456")
-    params = Map.merge(params, %{source_public_key: alt_ledger.primary_account_public_key})
+  test "`changeset` validates that the accounts' asset is the same", %{params: params, auth_key: source_key} do
+    {:ok, alt_asset} = create_asset("456")
+    params = Map.merge(params, %{source_public_key: alt_asset.primary_account_public_key})
     cs = Transfer.changeset(%Transfer{}, params, source_key)
     
     assert cs.valid? == false

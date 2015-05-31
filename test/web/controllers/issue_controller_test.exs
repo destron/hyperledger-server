@@ -9,31 +9,31 @@ defmodule Hyperledger.IssueControllerTest do
   setup do
     create_primary
     {:ok, secret_store} = SecretStore.start_link
-    {:ok, ledger} = create_ledger("123", secret_store)
+    {:ok, asset} = create_asset("123", secret_store)
 
-    params = issue_params(ledger.hash)
-    public_key = ledger.public_key
+    params = issue_params(asset.hash)
+    public_key = asset.public_key
     secret_key = SecretStore.get(secret_store, public_key)
     sig = sign(params, secret_key) |> Base.encode16
     
-    {:ok, ledger: ledger, params: params, public_key: public_key, sig: sig}
+    {:ok, asset: asset, params: params, public_key: public_key, sig: sig}
   end
 
-  test "GET ledger issues", %{ledger: ledger} do
-    conn = get conn(), "/ledgers/#{ledger.hash}/issues"
+  test "GET asset issues", %{asset: asset} do
+    conn = get conn(), "/assets/#{asset.hash}/issues"
     assert conn.status == 200
   end
   
-  test "POST /ledger/{id}/issues creates log entry and increases the primary wallet balance",
-  %{ledger: ledger, params: params, public_key: public_key, sig: sig} do
+  test "POST /asset/{id}/issues creates log entry and increases the primary wallet balance",
+  %{asset: asset, params: params, public_key: public_key, sig: sig} do
     conn = conn()
       |> put_req_header("content-type", "application/json")
       |> put_req_header("authorization", "Hyper Key=#{public_key}, Signature=#{sig}")
-      |> post("/ledgers/#{ledger.hash}/issues", Poison.encode!(params))
+      |> post("/assets/#{asset.hash}/issues", Poison.encode!(params))
     
     assert conn.status == 201
     assert Repo.all(Issue)    |> Enum.count == 1
     assert Repo.all(LogEntry) |> Enum.count == 1
-    assert Repo.one(assoc(ledger, :primary_account)).balance == 100
+    assert Repo.one(assoc(asset, :primary_account)).balance == 100
   end
 end

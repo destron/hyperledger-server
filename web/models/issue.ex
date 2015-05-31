@@ -3,7 +3,7 @@ defmodule Hyperledger.Issue do
   import Hyperledger.Validations
   
   alias Hyperledger.Repo
-  alias Hyperledger.Ledger
+  alias Hyperledger.Asset
   
   @primary_key {:uuid, Ecto.UUID, []}
   schema "issues" do
@@ -11,36 +11,36 @@ defmodule Hyperledger.Issue do
 
     timestamps
     
-    belongs_to :ledger, Ledger,
-      foreign_key: :ledger_hash,
+    belongs_to :asset, Asset,
+      foreign_key: :asset_hash,
       references: :hash,
       type: :string
     
-    has_one :account, through: [:ledger, :primary_account]
+    has_one :account, through: [:asset, :primary_account]
   end
   
-  @required_fields ~w(uuid amount ledger_hash)
+  @required_fields ~w(uuid amount asset_hash)
   @optional_fields ~w()
 
   def changeset(transfer, params \\ nil, auth_key) do
-    auth_ledger = Repo.one(from l in Ledger, where: l.public_key == ^auth_key, select: l)
+    auth_asset = Repo.one(from a in Asset, where: a.public_key == ^auth_key, select: a)
     auth_hash = 
-      case auth_ledger do
+      case auth_asset do
         nil -> []
-        ledger -> [ledger.hash]
+        asset -> [asset.hash]
       end
     
     transfer
     |> cast(params, @required_fields, @optional_fields)
-    |> validate_existence(:ledger_hash, Ledger)
+    |> validate_existence(:asset_hash, Asset)
     |> validate_number(:amount, greater_than: 0)
-    |> validate_inclusion(:ledger_hash, auth_hash)
+    |> validate_inclusion(:asset_hash, auth_hash)
   end
   
   def create(changeset) do
     Repo.transaction fn ->
       issue = Repo.insert(changeset)
-      issue = Repo.preload(issue, [:ledger, :account])
+      issue = Repo.preload(issue, [:asset, :account])
 
       %{ issue.account | balance: (issue.account.balance + issue.amount)}
       |> Repo.update

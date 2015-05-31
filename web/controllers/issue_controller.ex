@@ -3,7 +3,7 @@ defmodule Hyperledger.IssueController do
   use Ecto.Model
   
   alias Hyperledger.Issue
-  alias Hyperledger.Ledger
+  alias Hyperledger.Asset
   alias Hyperledger.LogEntry
   alias Hyperledger.Repo
   
@@ -11,9 +11,9 @@ defmodule Hyperledger.IssueController do
   plug :action
   
   def index(conn, params) do
-    ledger = Repo.get(Ledger, params["ledger_id"])
-    issues = Repo.all(assoc(ledger, :issues))
-    render conn, :index, issues: issues, ledger: ledger
+    asset = Repo.get(Asset, params["asset_id"])
+    issues = Repo.all(assoc(asset, :issues))
+    render conn, :index, issues: issues, asset: asset
   end
 
   def create(conn, params) do

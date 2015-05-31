@@ -8,18 +8,18 @@ defmodule Hyperledger.AccountControllerTest do
 
   setup do
     create_primary
-    {:ok, ledger} = create_ledger
-    {:ok, ledger: ledger}
+    {:ok, asset} = create_asset
+    {:ok, asset: asset}
   end
 
-  test "GET ledger accounts" do
+  test "GET /accounts" do
     conn = get conn(), "/accounts"
     assert conn.status == 200
   end
   
-  test "POST /accounts creates log entry and account", %{ledger: ledger} do
+  test "POST /accounts creates log entry and account", %{asset: asset} do
     {:ok, secret_store} = SecretStore.start_link
-    params = account_params(ledger.hash, secret_store)
+    params = account_params(asset.hash, secret_store)
     
     public_key = params.account[:publicKey]
     secret_key = SecretStore.get(secret_store, public_key)

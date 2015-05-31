@@ -35,10 +35,10 @@ defmodule Hyperledger.LogEntryControllerTest do
   end
 
   defp log_entry_body(id \\ 1, view \\ 1) do
-    data = %{ledger:
+    data = %{asset:
               %{hash: "123", publicKey: "abc", primaryAccountPublicKey: "def"}}
            |> Poison.encode!
-    %{logEntry: %{id: id, view: view, command: "ledger/create", data: data},
+    %{logEntry: %{id: id, view: view, command: "asset/create", data: data},
       prepareConfirmations: [%{nodeId: 1, signautre: "abc"}],
       commitConfirmations: []}
   end

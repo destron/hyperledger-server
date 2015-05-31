@@ -2,22 +2,22 @@ defmodule Hyperledger.ModelTest.Issue do
   use Hyperledger.ModelCase
 
   alias Hyperledger.Issue
-  alias Hyperledger.Ledger
+  alias Hyperledger.Asset
   
   setup do
-    {:ok, ledger} = create_ledger
-    auth_key = ledger.public_key
+    {:ok, asset} = create_asset
+    auth_key = asset.public_key
     params =
       %{
         uuid: Ecto.UUID.generate,
-        ledger_hash: ledger.hash,
+        asset_hash: asset.hash,
         amount: 100
       }
     {:ok, params: params, auth_key: auth_key}
   end
   
-  test "`changeset` validates that the ledger exists", %{params: params, auth_key: auth_key} do
-    bad_params = Map.merge(params, %{ledger_hash: "123"})
+  test "`changeset` validates that the asset exists", %{params: params, auth_key: auth_key} do
+    bad_params = Map.merge(params, %{asset_hash: "123"})
     cs = Issue.changeset(%Issue{}, bad_params, auth_key)
     assert cs.valid? == false
   end
@@ -44,7 +44,7 @@ defmodule Hyperledger.ModelTest.Issue do
     Issue.changeset(%Issue{}, params, auth_key)
     |> Issue.create
 
-    l = Repo.get(Ledger, params[:ledger_hash])
+    l = Repo.get(Asset, params[:asset_hash])
     a = Repo.one(assoc(l, :primary_account))
     assert a.balance == 100
   end

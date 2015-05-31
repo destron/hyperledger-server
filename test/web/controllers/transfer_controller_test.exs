@@ -10,16 +10,16 @@ defmodule Hyperledger.TransferControllerTest do
   setup do
     create_primary
     {:ok, secret_store} = SecretStore.start_link
-    {:ok, ledger} = create_ledger("123", secret_store)
+    {:ok, asset} = create_asset("123", secret_store)
     dest_params =
-      account_params(ledger.hash, secret_store)
+      account_params(asset.hash, secret_store)
       |> Hyperledger.ParamsHelpers.underscore_keys
     dest =
       %Account{}
       |> Account.changeset(dest_params["account"])
       |> Account.create
     
-    public_key = ledger.primary_account_public_key
+    public_key = asset.primary_account_public_key
     params = transfer_params(public_key, dest.public_key)
     secret_key = SecretStore.get(secret_store, public_key)
     sig = sign(params, secret_key) |> Base.encode16

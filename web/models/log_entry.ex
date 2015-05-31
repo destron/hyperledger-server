@@ -7,7 +7,7 @@ defmodule Hyperledger.LogEntry do
   
   alias Hyperledger.Repo
   alias Hyperledger.LogEntry
-  alias Hyperledger.Ledger
+  alias Hyperledger.Asset
   alias Hyperledger.Account
   alias Hyperledger.Issue
   alias Hyperledger.Transfer
@@ -150,9 +150,9 @@ defmodule Hyperledger.LogEntry do
     Repo.transaction fn ->
       params = Poison.decode!(log_entry.data) |> underscore_keys
       case log_entry.command do
-        "ledger/create" ->
-          Ledger.changeset(%Ledger{}, params["ledger"])
-          |> Ledger.create
+        "asset/create" ->
+          Asset.changeset(%Asset{}, params["asset"])
+          |> Asset.create
           
         "account/create" ->
           Account.changeset(%Account{}, params["account"])

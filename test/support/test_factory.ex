@@ -3,7 +3,7 @@ defmodule Hyperledger.TestFactory do
 
   alias Hyperledger.SecretStore
   alias Hyperledger.Node
-  alias Hyperledger.Ledger
+  alias Hyperledger.Asset
   
   def create_node(n) do
     Node.create n, "http://localhost-#{n}", "#{n}"
@@ -14,14 +14,14 @@ defmodule Hyperledger.TestFactory do
     System.put_env("NODE_URL", primary.url)
   end
   
-  def create_ledger(contract \\ "123", secret_store \\ nil) do
-    params = underscore_keys(ledger_params(contract, secret_store))
-    %Ledger{}
-    |> Ledger.changeset(params["ledger"])
-    |> Ledger.create
+  def create_asset(contract \\ "123", secret_store \\ nil) do
+    params = underscore_keys(asset_params(contract, secret_store))
+    %Asset{}
+    |> Asset.changeset(params["asset"])
+    |> Asset.create
   end
   
-  def ledger_params(contract \\ "123", secret_store \\ nil) do
+  def asset_params(contract \\ "123", secret_store \\ nil) do
     hash = :crypto.hash(:sha256, contract)
     {pk, sk} = key_pair
     {pa_pk, pa_sk} = key_pair
@@ -34,7 +34,7 @@ defmodule Hyperledger.TestFactory do
     end
     
     %{
-      ledger: %{
+      asset: %{
         hash: Base.encode16(hash),
         publicKey: pk,
         primaryAccountPublicKey: pa_pk
@@ -42,24 +42,24 @@ defmodule Hyperledger.TestFactory do
     }
   end
   
-  def account_params(ledger_hash, secret_store) do
+  def account_params(asset_hash, secret_store) do
     {pk, sk} = key_pair
     pk = Base.encode16(pk)
     SecretStore.put(secret_store, pk, sk)
     
     %{
       account: %{
-        ledgerHash: ledger_hash,
+        assetHash: asset_hash,
         publicKey: pk
       }
     }
   end
   
-  def issue_params(ledger_hash) do
+  def issue_params(asset_hash) do
     %{
       issue: %{
         uuid: Ecto.UUID.generate,
-        ledgerHash: ledger_hash,
+        assetHash: asset_hash,
         amount: 100
       }
     }

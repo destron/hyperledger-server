@@ -1,14 +1,14 @@
 defmodule Hyperledger.IssueView do
   use Hyperledger.Web, :view
   
-  def render("index.uber", %{conn: conn, issues: issues, ledger: ledger}) do
+  def render("index.uber", %{conn: conn, issues: issues, asset: asset}) do
     %{
       uber: %{
         version: "1.0",
         data: [
           %{
             rel: ["self"],
-            url: ledger_issue_url(conn, :index, ledger.hash)
+            url: asset_issue_url(conn, :index, asset.hash)
           },
           %{
             id: "issues",

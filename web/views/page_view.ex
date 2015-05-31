@@ -8,7 +8,7 @@ defmodule Hyperledger.PageView do
         data: [
           %{
             rel: ["self"],
-            name: "subledger",
+            name: "hyperledger",
             url: page_url(conn, :index)
           },
           %{
@@ -21,13 +21,13 @@ defmodule Hyperledger.PageView do
             url: log_entry_url(conn, :index)
           },
           %{
-            id: "ledgers",
+            id: "assets",
             rel: ["collection"],
-            url: ledger_url(conn, :index),
+            url: asset_url(conn, :index),
             data: [
               %{
                 name: "create",
-                url: ledger_url(conn, :create),
+                url: asset_url(conn, :create),
                 accepting: "application/json",
                 action: "append"
               }

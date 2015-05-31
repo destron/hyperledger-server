@@ -1,7 +1,7 @@
-defmodule Hyperledger.LedgerModelTest do
+defmodule Hyperledger.AssetModelTest do
   use Hyperledger.ModelCase
   
-  alias Hyperledger.Ledger
+  alias Hyperledger.Asset
   alias Hyperledger.Account
   
   setup do
@@ -20,8 +20,8 @@ defmodule Hyperledger.LedgerModelTest do
   
   test "`changeset` checks encoding of fields", %{params: params} do
     bad_enc_cs =
-      Ledger.changeset(
-        %Ledger{},
+      Asset.changeset(
+        %Asset{},
         %{
           hash: "GJ9D68b3RCw2HgjzEhtH+TjMcaiYTNntB4W8xa8FhA==",
           public_key: "00",
@@ -30,33 +30,33 @@ defmodule Hyperledger.LedgerModelTest do
     
     assert Enum.count(bad_enc_cs.errors) == 2
     
-    cs = Ledger.changeset(%Ledger{}, params)
+    cs = Asset.changeset(%Asset{}, params)
     
     assert cs.valid? == true
   end
   
   test "`create` inserts a changeset into the db", %{params: params} do
-    Ledger.changeset(%Ledger{}, params)
-    |> Ledger.create
+    Asset.changeset(%Asset{}, params)
+    |> Asset.create
     
-    assert Repo.get(Ledger, params.hash) != nil
+    assert Repo.get(Asset, params.hash) != nil
   end
   
   test "`create` also creates an associated primary account", %{params: params} do
-    {:ok, ledger} = Ledger.changeset(%Ledger{}, params)
-                    |> Ledger.create
+    {:ok, asset} = Asset.changeset(%Asset{}, params)
+                   |> Asset.create
     
     primary_acc =
       Account
       |> Repo.get(params.primary_account_public_key)
-      |> Repo.preload(:ledger)
+      |> Repo.preload(:asset)
     
     assert primary_acc != nil
-    assert primary_acc.ledger == ledger
+    assert primary_acc.asset == asset
   end
   
-  test "`create` returns the ledger", %{params: params} do
-    cs = Ledger.changeset(%Ledger{}, params)
-    assert {:ok, %Ledger{}} = Ledger.create(cs)
+  test "`create` returns the asset", %{params: params} do
+    cs = Asset.changeset(%Asset{}, params)
+    assert {:ok, %Asset{}} = Asset.create(cs)
   end
 end

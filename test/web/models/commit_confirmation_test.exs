@@ -7,12 +7,12 @@ defmodule Hyperledger.ModelTest.CommitConfirmation do
   alias Hyperledger.LogEntry
   alias Hyperledger.Node
   
-  defp changeset_for_ledger do
+  defp changeset_for_asset do
     {:ok, secret_store} = SecretStore.start_link
     
-    params = ledger_params("{}", secret_store)
-    public_key = params.ledger[:publicKey]
-    params = log_entry_params("ledger/create", params, public_key, secret_store)
+    params = asset_params("{}", secret_store)
+    public_key = params.asset[:publicKey]
+    params = log_entry_params("asset/create", params, public_key, secret_store)
     LogEntry.changeset(%LogEntry{}, :create, params[:logEntry])
   end
   
@@ -22,7 +22,7 @@ defmodule Hyperledger.ModelTest.CommitConfirmation do
     primary = Node.create(1, "http://localhost:4000", pk)
     System.put_env("NODE_URL", primary.url)
     
-    {:ok, log_entry} = LogEntry.create(changeset_for_ledger)
+    {:ok, log_entry} = LogEntry.create(changeset_for_asset)
     data = LogEntry.as_json(log_entry, false)
     sig = sign(data, sk) |> Base.encode16
     {:ok, log_entry: log_entry, data: Poison.encode!(data), sig: sig}
