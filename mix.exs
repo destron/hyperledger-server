@@ -3,8 +3,8 @@ defmodule Hyperledger.Mixfile do
 
   def project do    
     [app: :hyperledger,
-     version: "0.0.1",
-     elixir: "~> 1.0",
+     version: "0.1.0",
+     elixir: "~> 1.0.4",
      elixirc_paths: elixirc_paths(Mix.env),
      compilers: [:phoenix] ++ Mix.compilers,
      build_embedded: Mix.env == :prod,
