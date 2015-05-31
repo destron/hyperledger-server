@@ -46,7 +46,11 @@ defmodule Hyperledger.AccountView do
         %{
           name: "publicKey",
           value: account.public_key
-        }
+        },
+        %{
+          name: "balance",
+          value: account.balance
+        }  
       ]
     }
   end
