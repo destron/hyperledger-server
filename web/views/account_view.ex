@@ -40,13 +40,17 @@ defmodule Hyperledger.AccountView do
       url: account_url(conn, :show, account.public_key),
       data: [
         %{
-          name: "ledgerHash",
-          value: account.ledger_hash
+          name: "assetHash",
+          value: account.asset_hash
         },
         %{
           name: "publicKey",
           value: account.public_key
-        }
+        },
+        %{
+          name: "balance",
+          value: account.balance
+        }  
       ]
     }
   end

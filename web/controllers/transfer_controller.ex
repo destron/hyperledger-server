@@ -6,6 +6,7 @@ defmodule Hyperledger.TransferController do
   alias Hyperledger.LogEntry
   alias Hyperledger.Repo
   
+  plug Hyperledger.Authentication when action in [:create]
   plug :action
 
   def index(conn, _params) do
@@ -14,11 +15,24 @@ defmodule Hyperledger.TransferController do
   end
   
   def create(conn, params) do
-    json_data = params |> Map.take(["transfer"]) |> Poison.encode!
-    LogEntry.create(command: "transfer/create", data: json_data)
-    transfer = Repo.get(Transfer, params["transfer"]["uuid"])
-    conn
-    |> put_status(:created)
-    |> render :show, transfer: transfer
+    log_entry = %{
+      command: "transfer/create",
+      data: conn.private.raw_json_body,
+      authentication_key: conn.assigns[:authentication_key],
+      signature: conn.assigns[:signature]
+    }
+    changeset = LogEntry.changeset(%LogEntry{}, :create, log_entry)
+
+    if changeset.valid? do
+      LogEntry.create(changeset)
+      transfer = Repo.get(Transfer, params["transfer"]["uuid"])
+      conn
+      |> put_status(:created)
+      |> render :show, transfer: transfer
+    else
+      conn
+      |> put_status(:unprocessable_entity)
+      |> halt
+    end
   end
 end

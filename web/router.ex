@@ -12,7 +12,7 @@ defmodule Hyperledger.Router do
     get "/", PageController, :index
     get "pool", PoolController, :index
     resources "log", LogEntryController, only: [:index, :create]
-    resources "ledgers", LedgerController, only: [:index, :create] do
+    resources "assets", AssetController, only: [:index, :create] do
       resources "issues", IssueController, only: [:index, :create]
     end
     resources "transfers", TransferController, only: [:index, :create]

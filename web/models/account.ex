@@ -3,28 +3,28 @@ defmodule Hyperledger.Account do
   import Hyperledger.Validations
   
   alias Hyperledger.Repo
-  alias Hyperledger.Ledger
+  alias Hyperledger.Asset
   
   @primary_key {:public_key, :string, []}
   schema "accounts" do
     field :balance, :integer, default: 0
-
-    timestamps
     
-    belongs_to :ledger, Hyperledger.Ledger,
-      foreign_key: :ledger_hash,
+    belongs_to :asset, Asset,
+      foreign_key: :asset_hash,
       references: :hash,
       type: :string
+    
+    timestamps
   end
   
-  @required_fields ~w(public_key ledger_hash)
+  @required_fields ~w(public_key asset_hash)
   @optional_fields ~w()
 
   def changeset(account, params \\ nil) do
     account
     |> cast(params, @required_fields, @optional_fields)
     |> validate_encoding(:public_key)
-    |> validate_existence(:ledger_hash, Ledger)
+    |> validate_existence(:asset_hash, Asset)
   end
   
   def create(changeset) do

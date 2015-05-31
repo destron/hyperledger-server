@@ -1,27 +1,21 @@
-defmodule Hyperledger.AccountController do
+defmodule Hyperledger.AssetController do
   use Hyperledger.Web, :controller
-  use Ecto.Model
   
   alias Hyperledger.Repo
-  alias Hyperledger.Account
+  alias Hyperledger.Asset
   alias Hyperledger.LogEntry
-  
+
   plug Hyperledger.Authentication when action in [:create]
   plug :action
 
   def index(conn, _params) do
-    accounts = Repo.all(Account)
-    render conn, :index, accounts: accounts
-  end
-  
-  def show(conn, params) do
-    account = Repo.first(Acccount, params["id"])
-    render conn, :show, account: account
+    assets = Repo.all(Asset)
+    render conn, :index, assets: assets
   end
   
   def create(conn, params) do
     log_entry = %{
-      command: "account/create",
+      command: "asset/create",
       data: conn.private.raw_json_body,
       authentication_key: conn.assigns[:authentication_key],
       signature: conn.assigns[:signature]
@@ -30,10 +24,10 @@ defmodule Hyperledger.AccountController do
     
     if changeset.valid? do
       LogEntry.create(changeset)
-      account = Repo.get(Account, params["account"]["publicKey"])
+      asset = Repo.get(Asset, params["asset"]["hash"])
       conn
       |> put_status(:created)
-      |> render :show, account: account
+      |> render :show, asset: asset
     else
       conn
       |> put_status(:unprocessable_entity)

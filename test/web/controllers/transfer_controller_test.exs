@@ -1,15 +1,30 @@
 defmodule Hyperledger.TransferControllerTest do
   use Hyperledger.ConnCase
   
+  alias Hyperledger.SecretStore
+  
   alias Hyperledger.Transfer
+  alias Hyperledger.Account
   alias Hyperledger.LogEntry
 
   setup do
     create_primary
-    {:ok, ledger} = create_ledger
-    account = build(ledger, :accounts)
-    %{ account | public_key: "fgh" } |> Repo.insert
-    {:ok, ledger: ledger}
+    {:ok, secret_store} = SecretStore.start_link
+    {:ok, asset} = create_asset("123", secret_store)
+    dest_params =
+      account_params(asset.hash, secret_store)
+      |> Hyperledger.ParamsHelpers.underscore_keys
+    dest =
+      %Account{}
+      |> Account.changeset(dest_params["account"])
+      |> Account.create
+    
+    public_key = asset.primary_account_public_key
+    params = transfer_params(public_key, dest.public_key)
+    secret_key = SecretStore.get(secret_store, public_key)
+    sig = sign(params, secret_key) |> Base.encode16
+    
+    {:ok, params: params, public_key: public_key, sig: sig}
   end
 
   test "GET transfers" do
@@ -17,13 +32,11 @@ defmodule Hyperledger.TransferControllerTest do
     assert conn.status == 200
   end
   
-  test "POST transfers creates log entry and a transfer", %{ledger: ledger} do
-    uuid = Ecto.UUID.generate
-    source = ledger.primary_account_public_key
-    body = %{transfer: %{uuid: uuid, sourcePublicKey: source, destinationPublicKey: "fgh", amount: 100}}
+  test "POST transfers creates log entry and a transfer", %{params: params, public_key: public_key, sig: sig} do
     conn = conn()
       |> put_req_header("content-type", "application/json")
-      |> post("/transfers", Poison.encode!(body))
+      |> put_req_header("authorization", "Hyper Key=#{public_key}, Signature=#{sig}")
+      |> post("/transfers", Poison.encode!(params))
     
     assert conn.status == 201
     assert Repo.all(Transfer) |> Enum.count == 1

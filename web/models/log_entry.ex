@@ -7,7 +7,7 @@ defmodule Hyperledger.LogEntry do
   
   alias Hyperledger.Repo
   alias Hyperledger.LogEntry
-  alias Hyperledger.Ledger
+  alias Hyperledger.Asset
   alias Hyperledger.Account
   alias Hyperledger.Issue
   alias Hyperledger.Transfer
@@ -34,7 +34,7 @@ defmodule Hyperledger.LogEntry do
   @required_fields ~w(command data authentication_key signature)
   @optional_fields ~w()
   
-  def changeset(log_entry, params \\ nil) do
+  def changeset(log_entry, :create, params \\ nil) do
     log_entry
     |> cast(params, @required_fields, @optional_fields)
     |> validate_encoding(:authentication_key)
@@ -42,12 +42,15 @@ defmodule Hyperledger.LogEntry do
     |> validate_authenticity
   end
   
-  def create(command: command, data: data) do
+  def create(changeset) do
     Repo.transaction fn ->
       id = (Repo.all(LogEntry) |> Enum.count) + 1
+      
+      log_entry =
+        changeset
+        |> change(%{id: id, view: 1})
+        |> Repo.insert
 
-      log_entry = %LogEntry{id: id, view: 1, command: command, data: data}
-                  |> Repo.insert        
       add_prepare(log_entry, Node.current.id, "temp_signature")
       Node.broadcast(log_entry.id, as_json(log_entry))
       log_entry
@@ -147,20 +150,20 @@ defmodule Hyperledger.LogEntry do
     Repo.transaction fn ->
       params = Poison.decode!(log_entry.data) |> underscore_keys
       case log_entry.command do
-        "ledger/create" ->
-          Ledger.changeset(%Ledger{}, params["ledger"])
-          |> Ledger.create
+        "asset/create" ->
+          Asset.changeset(%Asset{}, params["asset"])
+          |> Asset.create
           
         "account/create" ->
           Account.changeset(%Account{}, params["account"])
           |> Account.create
         
         "issue/create" ->
-          Issue.changeset(%Issue{}, params["issue"])
+          Issue.changeset(%Issue{}, params["issue"], log_entry.authentication_key)
           |> Issue.create
         
         "transfer/create" ->
-          Transfer.changeset(%Transfer{}, params["transfer"])
+          Transfer.changeset(%Transfer{}, params["transfer"], log_entry.authentication_key)
           |> Transfer.create
       end
     
@@ -181,19 +184,31 @@ defmodule Hyperledger.LogEntry do
     Repo.get(LogEntry, log_entry.id + 1)
   end
   
-  def as_json(log_entry) do
-    log_entry = Repo.preload(log_entry, [:prepare_confirmations, :commit_confirmations])
-    %{logEntry:
-      %{id: log_entry.id,
-        view: log_entry.view,
-        command: log_entry.command,
-        data: log_entry.data},
-      prepareConfirmations: Enum.map(log_entry.prepare_confirmations, fn conf ->
+  def as_json(log_entry, with_confirmation \\ true) do
+    body =
+      %{
+        logEntry: %{
+          id: log_entry.id,
+          view: log_entry.view,
+          command: log_entry.command,
+          data: log_entry.data,
+          authorisation_key: log_entry.authentication_key,
+          signature: log_entry.signature
+        }
+      }
+    
+    if with_confirmation do
+      log_entry = Repo.preload(log_entry, [:prepare_confirmations, :commit_confirmations])
+      prepares = Enum.map(log_entry.prepare_confirmations, fn conf ->
         %{nodeId: conf.node_id, signature: conf.signature}
-      end),
-      commitConfirmations: Enum.map(log_entry.commit_confirmations, fn conf ->
+      end)
+      commits = Enum.map(log_entry.commit_confirmations, fn conf ->
         %{nodeId: conf.node_id, signature: conf.signature}
-      end)}
+      end)
+      body |> Map.merge(%{prepareConfirmations: prepares, commitConfirmation: commits})
+    else
+      body
+    end
   end
   
   defp validate_authenticity(changeset) do

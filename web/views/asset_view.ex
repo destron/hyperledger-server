@@ -1,20 +1,20 @@
-defmodule Hyperledger.LedgerView do
+defmodule Hyperledger.AssetView do
   use Hyperledger.Web, :view
   
-  def render("index.uber", %{conn: conn, ledgers: ledgers}) do
+  def render("index.uber", %{conn: conn, assets: assets}) do
     %{
       uber: %{
         version: "1.0",
         data: [
           %{
             rel: ["self"],
-            url: ledger_url(conn, :index)
+            url: asset_url(conn, :index)
           },
           %{
-            id: "ledgers",
+            id: "assets",
             rel: ["collection"],
-            data: Enum.map(ledgers, fn ledger ->
-              ledger_body(ledger, ["item"], conn)
+            data: Enum.map(assets, fn asset ->
+              asset_body(asset, ["item"], conn)
             end)
           }
         ]
@@ -22,38 +22,38 @@ defmodule Hyperledger.LedgerView do
     }
   end
   
-  def render("show.uber", %{conn: conn, ledger: ledger}) do
+  def render("show.uber", %{conn: conn, asset: asset}) do
     %{
       uber: %{
         version: "1.0",
         data: [
-          ledger_body(ledger, ["self"], conn)
+          asset_body(asset, ["self"], conn)
         ]
       }
     }
   end
   
-  defp ledger_body(ledger, rels, conn) do
+  defp asset_body(asset, rels, conn) do
     %{
-      name: "ledger",
+      name: "asset",
       rel: rels,
       data: [
         %{
           name: "hash",
-          value: ledger.hash
+          value: asset.hash
         },
         %{
           name: "publicKey",
-          value: ledger.public_key
+          value: asset.public_key
         },
         %{
           name: "primaryAccount",
-          url: account_url(conn, :show, ledger.primary_account_public_key)
+          url: account_url(conn, :show, asset.primary_account_public_key)
         },
         %{
           name: "issues",
           rel: ["collection"],
-          url: ledger_issue_url(conn, :index, ledger.hash)
+          url: asset_issue_url(conn, :index, asset.hash)
         }
       ]
     }

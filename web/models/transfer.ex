@@ -24,13 +24,14 @@ defmodule Hyperledger.Transfer do
   @required_fields ~w(uuid amount source_public_key destination_public_key)
   @optional_fields ~w()
 
-  def changeset(transfer, params \\ nil) do
+  def changeset(transfer, params \\ nil, auth_key) do
     transfer
     |> cast(params, @required_fields, @optional_fields)
     |> validate_existence(:source_public_key, Account)
     |> validate_existence(:destination_public_key, Account)
-    |> validate_ledger_equality
+    |> validate_asset_equality
     |> validate_number(:amount, greater_than: 0)
+    |> validate_inclusion(:source_public_key, [auth_key], message: "is not authorised")
   end
   
   def create(changeset) do
@@ -47,21 +48,14 @@ defmodule Hyperledger.Transfer do
     end
   end
   
-  defp validate_ledger_equality(changeset) do
+  defp validate_asset_equality(changeset) do
     source = Repo.get(Account, changeset.changes.source_public_key)
     dest   = Repo.get(Account, changeset.changes.destination_public_key)
     
     cond do
       is_nil(source) or is_nil(dest) -> changeset
-      source.ledger_hash == dest.ledger_hash -> changeset
-      true -> add_error changeset, :accounts, :are_not_on_the_same_ledger
+      source.asset_hash == dest.asset_hash -> changeset
+      true -> add_error changeset, :accounts, :do_not_hold_the_same_asset
     end
-    # validate_change changeset, nil, fn _,_ ->
-    #   # unless is_nil(source) or is_nil(dest) do
-    #     IO.puts "here"
-    #   # else
-    #   #   IO.puts "Nils"
-    #   # end
-    # end
   end
 end
