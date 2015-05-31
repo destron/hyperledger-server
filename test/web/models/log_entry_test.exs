@@ -88,22 +88,11 @@ defmodule Hyperledger.LogEntryModelTest do
     cs = changeset_for_ledger
     data = cs.changes.data
     headers = ["Content-Type": "application/json"]
-
-    body =
-      %{
-        logEntry: %{
-          id: 1,
-          view: 1,
-          command: "ledger/create",
-          data: data
-        },
-        prepareConfirmations: [%{nodeId: 1, signature: "temp_signature"}],
-        commitConfirmations: []}
-        |> Poison.encode!
     
     with_mock HTTPotion,
     post: fn(_, _) -> %HTTPotion.Response{status_code: 201} end do
-      LogEntry.create(cs)
+      {:ok, log_entry} = LogEntry.create(cs)
+      body = LogEntry.as_json(log_entry) |> Poison.encode!
       
       assert(
         called(
@@ -122,29 +111,21 @@ defmodule Hyperledger.LogEntryModelTest do
     node = create_node(2)
     System.put_env("NODE_URL", node.url)
     create_node(3)
-    
     data = changeset_for_ledger.changes.data
     headers = ["Content-Type": "application/json"]
-    body =
-      %{
-        logEntry: %{
+    
+    with_mock HTTPotion,
+    post: fn(_, _) -> %HTTPotion.Response{status_code: 201} end do
+      {:ok, log_entry} =
+        LogEntry.insert(
           id: 1,
           view: 1,
           command: "ledger/create",
-          data: data
-        },
-        prepareConfirmations: [
-          %{nodeId: 1, signature: "temp_signature"},
-          %{nodeId: 2, signature: "temp_signature"}],
-        commitConfirmations: []
-      }
-      |> Poison.encode!
-           
-    with_mock HTTPotion,
-    post: fn(_, _) -> %HTTPotion.Response{status_code: 201} end do
-      LogEntry.insert id: 1, view: 1, command: "ledger/create", data: data,
-        prepare_confirmations: [%{node_id: 1, signature: "temp_signature"}],
-        commit_confirmations: []
+          data: data,
+          prepare_confirmations: [%{node_id: 1, signature: "temp_signature"}],
+          commit_confirmations: []
+        )
+      body = LogEntry.as_json(log_entry) |> Poison.encode!
       
       assert(
         called(
@@ -162,32 +143,22 @@ defmodule Hyperledger.LogEntryModelTest do
     node = create_node(2)
     cs = changeset_for_ledger
     headers = ["Content-Type": "application/json"]
-    body =
-      %{
-        logEntry: %{
-          id: 1,
-          view: 1,
-          command: "ledger/create",
-          data: cs.changes.data
-        },
-        prepareConfirmations: [
-          %{nodeId: 1, signature: "temp_signature"},
-          %{nodeId: 2, signature: "temp_signature"}
-        ],
-        commitConfirmations: [
-          %{nodeId: 1, signature: "temp_signature"}
-        ]
-      }
-      |> Poison.encode!
-         
+    
     with_mock HTTPotion,
     post: fn(_, _) -> %HTTPotion.Response{status_code: 201} end do
-      LogEntry.create(cs)
-      
-      LogEntry.insert id: 1, view: 1, command: "ledger/create", data: cs.changes.data,
+      LogEntry.create(cs)      
+      LogEntry.insert(
+        id: 1,
+        view: 1,
+        command: "ledger/create",
+        data: cs.changes.data,
         prepare_confirmations: [%{node_id: 2, signature: "temp_signature"}],
         commit_confirmations: []
-        
+      )
+      
+      log_entry = Repo.get(LogEntry, 1)
+      body = LogEntry.as_json(log_entry) |> Poison.encode!
+      
       assert(
         called(
           HTTPotion.post(
