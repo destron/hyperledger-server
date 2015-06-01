@@ -73,7 +73,7 @@ defmodule Hyperledger.LogEntryModelTest do
     {:ok, log_entry} = LogEntry.create(changeset_for_asset)
     
     assert log_entry.id   == 1
-    assert log_entry.view == 1
+    assert log_entry.view.id == 1
   end
   
   test "creating a log entry also appends a prepare confirmation from self" do
@@ -116,7 +116,7 @@ defmodule Hyperledger.LogEntryModelTest do
       {:ok, log_entry} =
         LogEntry.insert(
           id: 1,
-          view: 1,
+          view_id: 1,
           command: "asset/create",
           data: data,
           prepare_confirmations: [%{node_id: 1, signature: "temp_signature"}],
@@ -146,7 +146,7 @@ defmodule Hyperledger.LogEntryModelTest do
       LogEntry.create(cs)      
       LogEntry.insert(
         id: 1,
-        view: 1,
+        view_id: 1,
         command: "asset/create",
         data: cs.changes.data,
         prepare_confirmations: [%{node_id: 2, signature: "temp_signature"}],
@@ -171,11 +171,11 @@ defmodule Hyperledger.LogEntryModelTest do
   test "commit confirmations are appended to the record and become marked as committed" do
     create_node(2)
     LogEntry.create(changeset_for_asset)
-    LogEntry.insert id: 1, view: 1, command: "asset/create",
+    LogEntry.insert id: 1, view_id: 1, command: "asset/create",
       data: sample_asset_data, prepare_confirmations: [
         %{node_id: 2, signature: "temp_signature"}], commit_confirmations: []
     
-    LogEntry.insert id: 1, view: 1, command: "asset/create",
+    LogEntry.insert id: 1, view_id: 1, command: "asset/create",
       data: sample_asset_data, prepare_confirmations: [],
       commit_confirmations: [%{node_id: 2, signature: "temp_signature"}]
 
@@ -184,14 +184,14 @@ defmodule Hyperledger.LogEntryModelTest do
   end
   
   test "inserting a log entry returns error if primary has no existing record" do
-    assert {:error, _} = LogEntry.insert id: 1, view: 1, command: "asset/create",
+    assert {:error, _} = LogEntry.insert id: 1, view_id: 1, command: "asset/create",
       data: sample_asset_data, prepare_confirmations: [], commit_confirmations: []
   end
   
   test "inserting a log entry returns ok if primary has record which matches" do
     LogEntry.create(changeset_for_asset)
     assert {:ok, %LogEntry{}} = LogEntry.insert(
-      id: 1, view: 1, command: "asset/create", data: sample_asset_data,
+      id: 1, view_id: 1, command: "asset/create", data: sample_asset_data,
       prepare_confirmations: [%{node_id: 1, signature: "temp_signature"},
                               %{node_id: 2, signature: "temp_signature"}],
       commit_confirmations: [])
@@ -204,7 +204,7 @@ defmodule Hyperledger.LogEntryModelTest do
     System.put_env("NODE_URL", node.url)
 
     assert {:ok, %LogEntry{}} = LogEntry.insert(
-      id: 1, view: 1, command: "asset/create", data: sample_asset_data,
+      id: 1, view_id: 1, command: "asset/create", data: sample_asset_data,
       prepare_confirmations: [%{node_id: 1, signature: "temp_signature"}],
       commit_confirmations: [])
   end
@@ -213,13 +213,13 @@ defmodule Hyperledger.LogEntryModelTest do
     node = create_node(2)
     System.put_env("NODE_URL", node.url)
 
-    LogEntry.insert id: 1, view: 1, command: "asset/create",
+    LogEntry.insert id: 1, view_id: 1, command: "asset/create",
       data: sample_asset_data, prepare_confirmations: [%{
         node_id: 1, signature: "temp_signature"}], commit_confirmations: []
     
     assert Repo.all(PrepareConfirmation) |> Enum.count == 2
     
-    LogEntry.insert id: 1, view: 1, command: "asset/create", data: sample_asset_data,
+    LogEntry.insert id: 1, view_id: 1, command: "asset/create", data: sample_asset_data,
       prepare_confirmations: [%{node_id: 1, signature: "temp_signature"}],
       commit_confirmations: [%{node_id: 1, signature: "temp_signature"}]
     

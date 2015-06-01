@@ -14,15 +14,22 @@ defmodule Hyperledger.View do
   end
   
   def append do
-    id = Repo.one(from v in View, select: count(v.id)) + 1
+    view_count = Repo.one(from v in View, select: count(v.id))
     node_count = Repo.one(from n in Node, select: count(n.id))
-    primary = Repo.get(Node, (node_count - rem(id, node_count)))
+    primary_id = rem(view_count, node_count) + 1
     
-    %View{id: id, primary: primary} |> Repo.insert
+    %View{id: view_count + 1, primary_id: primary_id}
+    |> Repo.insert
+    |> Repo.preload(:primary)
   end
   
   def current do
     id = Repo.one(from v in View, select: count(v.id))
-    Repo.get(View, id)
+    if id == 0 do
+      View.append
+    else
+      Repo.get(View, id)
+      |> Repo.preload(:primary)
+    end
   end
 end

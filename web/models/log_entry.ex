@@ -50,7 +50,7 @@ defmodule Hyperledger.LogEntry do
       
       log_entry =
         changeset
-        |> change(%{id: id, view: 1})
+        |> change(%{id: id, view: View.current})
         |> Repo.insert
 
       add_prepare(log_entry, Node.current.id, "temp_signature")
@@ -59,15 +59,15 @@ defmodule Hyperledger.LogEntry do
     end
   end
   
-  def insert(id: id, view: view, command: command, data: data,
+  def insert(id: id, view_id: view_id, command: command, data: data,
     prepare_confirmations: prep_confs, commit_confirmations: commit_confs) do
     Repo.transaction fn ->
-      log_entry = %LogEntry{id: id, view: view, command: command, data: data}
+      log_entry = %LogEntry{id: id, view_id: view_id, command: command, data: data}
       prep_ids = Enum.map(prep_confs, &(&1.node_id))
       
       cond do
         # If the node is a replica and the log has a prepare from the primary
-        Node.current.id != 1 and (1 in prep_ids) ->
+        Node.current != View.current.primary and (View.current.primary.id in prep_ids) ->
           case Repo.get(LogEntry, id) do
             nil -> log_entry = Repo.insert(log_entry)
             saved_entry -> log_entry = saved_entry
@@ -84,10 +84,10 @@ defmodule Hyperledger.LogEntry do
           log_entry
           
         # Node is primary
-        Node.current.id == 1 ->      
+        Node.current == View.current.primary ->      
           case Repo.get(LogEntry, id) do
             nil ->
-              Repo.rollback(:error)
+              Repo.rollback(:cant_insert_entries_to_primary)
             log_entry ->
               # Prepares
               pc_node_ids = Repo.all(assoc(log_entry, :prepare_confirmations))
@@ -104,7 +104,7 @@ defmodule Hyperledger.LogEntry do
               |> Enum.each &(add_commit(log_entry, &1.node_id, &1.signature))
           end
         true ->
-          Repo.rollback(:error)
+          Repo.rollback(:invalid_node)
       end
       log_entry
     end
@@ -191,7 +191,7 @@ defmodule Hyperledger.LogEntry do
       %{
         logEntry: %{
           id: log_entry.id,
-          view: log_entry.view,
+          view_id: log_entry.view_id,
           command: log_entry.command,
           data: log_entry.data,
           authorisation_key: log_entry.authentication_key,
