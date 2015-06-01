@@ -12,12 +12,12 @@ defmodule Hyperledger.LogEntry do
   alias Hyperledger.Issue
   alias Hyperledger.Transfer
   alias Hyperledger.Node
+  alias Hyperledger.View
   alias Hyperledger.PrepareConfirmation
   alias Hyperledger.CommitConfirmation
   alias Hyperledger.Crypto
 
   schema "log_entries" do
-    field :view, :integer
     field :command, :string
     field :data, :string
     field :authentication_key, :string
@@ -27,7 +27,8 @@ defmodule Hyperledger.LogEntry do
     field :executed, :boolean, default: false
 
     timestamps
-      
+    
+    belongs_to :view, View
     has_many :prepare_confirmations, PrepareConfirmation
     has_many :commit_confirmations, CommitConfirmation
   end
