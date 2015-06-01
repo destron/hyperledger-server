@@ -31,6 +31,7 @@ defmodule Hyperledger.ConnCase do
       import Hyperledger.ConnCase
       # Import factory functions
       import Hyperledger.TestFactory
+      import Hyperledger.Crypto
     end
   end
 

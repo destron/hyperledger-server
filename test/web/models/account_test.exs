@@ -5,8 +5,8 @@ defmodule Hyperledger.ModelTest.Account do
   
   setup do
     {:ok, asset} = create_asset
-    {pk, _sk} = :crypto.generate_key(:ecdh, :secp256k1)
-    {:ok, asset: asset, pk: Base.encode16(pk)}
+    {pk, _sk} = key_pair
+    {:ok, asset: asset, pk: pk}
   end
   
   test "`changeset` validates encoding of key", %{asset: asset} do

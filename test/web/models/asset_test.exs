@@ -5,15 +5,14 @@ defmodule Hyperledger.AssetModelTest do
   alias Hyperledger.Account
   
   setup do
-    hash = :crypto.hash(:sha256, "123")
-    {pk, _sk} = :crypto.generate_key(:ecdh, :secp256k1)
-    {pa_pk, _sk} = :crypto.generate_key(:ecdh, :secp256k1)
+    {pk, _sk} = key_pair
+    {pa_pk, _sk} = key_pair
     
     params =
       %{
-        hash: Base.encode16(hash),
-        public_key: Base.encode16(pk),
-        primary_account_public_key: Base.encode16(pa_pk)
+        hash: hash("{}"),
+        public_key: pk,
+        primary_account_public_key: pa_pk
       }
     {:ok, params: params}
   end

@@ -14,6 +14,7 @@ defmodule Hyperledger.LogEntry do
   alias Hyperledger.Node
   alias Hyperledger.PrepareConfirmation
   alias Hyperledger.CommitConfirmation
+  alias Hyperledger.Crypto
 
   schema "log_entries" do
     field :view, :integer
@@ -217,7 +218,7 @@ defmodule Hyperledger.LogEntry do
     validate_change changeset, :data, fn :data, body ->
       case {Base.decode16(key), Base.decode16(sig)} do
         {{:ok, key}, {:ok, sig}} ->
-          if :crypto.verify(:ecdsa, :sha256, body, sig, [key, :secp256k1]) do
+          if Crypto.verify(body, sig, key) do
             []
           else
             [{:data, :authentication_failed}]

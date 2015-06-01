@@ -18,13 +18,12 @@ defmodule Hyperledger.ModelTest.PrepareConfirmation do
   
   setup do
     {pk, sk} = key_pair
-    pk = Base.encode16(pk)
     primary = Node.create(1, "http://localhost:4000", pk)
     System.put_env("NODE_URL", primary.url)
     
     {:ok, log_entry} = LogEntry.create(changeset_for_asset)
     data = LogEntry.as_json(log_entry, false)
-    sig = sign(data, sk) |> Base.encode16
+    sig = sign(data, sk)
     {:ok, log_entry: log_entry, data: Poison.encode!(data), sig: sig}
   end
   
@@ -43,7 +42,7 @@ defmodule Hyperledger.ModelTest.PrepareConfirmation do
   
   test "changeset checks for signature authenticity", %{log_entry: log_entry, data: data} do
     {_pk, sk} = key_pair
-    sig = sign(data, sk) |> Base.encode16
+    sig = sign(data, sk)
     
     params = %{
       log_entry_id: log_entry.id,

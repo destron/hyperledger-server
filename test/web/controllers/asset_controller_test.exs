@@ -13,7 +13,7 @@ defmodule Hyperledger.AssetControllerTest do
     params = asset_params("123", secret_store)
     public_key = params.asset[:publicKey]
     secret_key = SecretStore.get(secret_store, public_key)
-    sig = sign(params, secret_key) |> Base.encode16
+    sig = sign(params, secret_key)
     
     {:ok, params: params, public_key: public_key, sig: sig}
   end

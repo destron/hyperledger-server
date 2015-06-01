@@ -23,7 +23,7 @@ defmodule Hyperledger.AccountControllerTest do
     
     public_key = params.account[:publicKey]
     secret_key = SecretStore.get(secret_store, public_key)
-    sig = sign(params, secret_key) |> Base.encode16
+    sig = sign(params, secret_key)
     
     conn = conn()
        |> put_req_header("content-type", "application/json")

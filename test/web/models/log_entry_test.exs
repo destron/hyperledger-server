@@ -59,7 +59,6 @@ defmodule Hyperledger.LogEntryModelTest do
     {:ok, alt_store} = SecretStore.start_link
     {pk, _} = key_pair
     {_, sk} = key_pair
-    pk = Base.encode16(pk)
     SecretStore.put(alt_store, pk, sk)
     cs = gen_changeset("asset/create", asset_params, pk, alt_store)
 

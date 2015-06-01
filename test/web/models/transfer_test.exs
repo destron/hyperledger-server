@@ -7,8 +7,7 @@ defmodule Hyperledger.ModelTest.Transfer do
   
   setup do
     {:ok, asset} = create_asset
-    {d_pk, _sk} = key_pair
-    dest_key = Base.encode16(d_pk)
+    {dest_key, _sk} = key_pair
     
     destination =
       %Account{}
