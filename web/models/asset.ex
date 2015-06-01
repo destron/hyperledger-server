@@ -5,7 +5,6 @@ defmodule Hyperledger.Asset do
   alias Hyperledger.Repo
   alias Hyperledger.Account
   alias Hyperledger.Issue
-  alias Hyperledger.Transfer
   
   @primary_key {:hash, :string, []}
   schema "assets" do
@@ -14,7 +13,7 @@ defmodule Hyperledger.Asset do
     timestamps
     
     has_many :accounts, Account
-    has_many :issues,   Issue
+    has_many :issues, Issue
     
     belongs_to :primary_account, Account,
       foreign_key: :primary_account_public_key,
