@@ -4,31 +4,32 @@ defmodule Hyperledger.AssetModelTest do
   alias Hyperledger.Asset
   alias Hyperledger.Account
   
+  defp bad_changeset do
+    params =
+      %{
+        hash: "GJ9D68b3RCw2HgjzEhtH+TjMcaiYTNntB4W8xa8FhA==",
+        public_key: "00",
+        primary_account_public_key: "foo bar"
+      }
+    
+    Asset.changeset(%Asset{}, params)
+  end
+  
   setup do
-    hash = :crypto.hash(:sha256, "123")
-    {pk, _sk} = :crypto.generate_key(:ecdh, :secp256k1)
-    {pa_pk, _sk} = :crypto.generate_key(:ecdh, :secp256k1)
+    {pk, _sk} = key_pair
+    {pa_pk, _sk} = key_pair
     
     params =
       %{
-        hash: Base.encode16(hash),
-        public_key: Base.encode16(pk),
-        primary_account_public_key: Base.encode16(pa_pk)
+        hash: hash("{}"),
+        public_key: pk,
+        primary_account_public_key: pa_pk
       }
     {:ok, params: params}
   end
   
   test "`changeset` checks encoding of fields", %{params: params} do
-    bad_enc_cs =
-      Asset.changeset(
-        %Asset{},
-        %{
-          hash: "GJ9D68b3RCw2HgjzEhtH+TjMcaiYTNntB4W8xa8FhA==",
-          public_key: "00",
-          primary_account_public_key: "foo bar"}
-      )
-    
-    assert Enum.count(bad_enc_cs.errors) == 2
+    assert Enum.count(bad_changeset.errors) == 2
     
     cs = Asset.changeset(%Asset{}, params)
     
@@ -43,8 +44,7 @@ defmodule Hyperledger.AssetModelTest do
   end
   
   test "`create` also creates an associated primary account", %{params: params} do
-    {:ok, asset} = Asset.changeset(%Asset{}, params)
-                   |> Asset.create
+    {:ok, asset} = Asset.changeset(%Asset{}, params) |> Asset.create
     
     primary_acc =
       Account
@@ -58,5 +58,9 @@ defmodule Hyperledger.AssetModelTest do
   test "`create` returns the asset", %{params: params} do
     cs = Asset.changeset(%Asset{}, params)
     assert {:ok, %Asset{}} = Asset.create(cs)
+  end
+  
+  test "`create` with bad changeset returns :error" do
+    assert {:error, _} = Asset.create(bad_changeset)
   end
 end

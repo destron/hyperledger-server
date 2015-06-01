@@ -1,15 +1,15 @@
-defmodule Hyperledger.PrepareConfirmation do
+defmodule Hyperledger.PrePrepare do
   use Ecto.Model
   import Hyperledger.Validations
   
-  alias Hyperledger.PrepareConfirmation
+  alias Hyperledger.PrePrepare
   alias Hyperledger.LogEntry
   alias Hyperledger.Node
   alias Hyperledger.Repo
   
-  schema "prepare_confirmations" do
-    field :signature, :string
+  schema "pre_prepares" do
     field :data, :string
+    field :signature, :string    
     timestamps
     
     belongs_to :log_entry, LogEntry
@@ -19,9 +19,8 @@ defmodule Hyperledger.PrepareConfirmation do
   @required_fields ~w(data signature log_entry_id node_id)
   
   def changeset(params) do
-    %PrepareConfirmation{}
+    %PrePrepare{}
     |> cast(params, @required_fields, [])
-    |> validate_inclusion(:node_id, Repo.all(from n in Node, select: n.id))
     |> validate_node_authenticity
   end
   

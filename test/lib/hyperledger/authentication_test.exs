@@ -1,6 +1,7 @@
 defmodule Hyperledger.Authentication.Test do
   use ExUnit.Case, async: true
   use Plug.Test
+  import Hyperledger.Crypto
 
   defmodule TestPlug do
     use Plug.Builder
@@ -25,14 +26,6 @@ defmodule Hyperledger.Authentication.Test do
     |> plug.call([])
   end
   
-  defp key_pair do
-    :crypto.generate_key(:ecdh, :secp256k1)
-  end
-  
-  defp sign(message, key) do
-    :crypto.sign(:ecdsa, :sha256, message, [key, :secp256k1])
-  end
-
   defp assert_unauthorized(conn) do
     assert conn.status == 401
     refute conn.assigns[:authentication_key]
@@ -53,7 +46,7 @@ defmodule Hyperledger.Authentication.Test do
     {public_key, private_key} = key_pair
     body = "{}"
     signature = sign(body, private_key)
-    {:ok, key: Base.encode16(public_key), sig: Base.encode16(signature)}
+    {:ok, key: public_key, sig: signature}
   end
 
   test "request without auth header" do

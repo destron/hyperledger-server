@@ -20,14 +20,27 @@ defmodule Hyperledger.Account do
   @required_fields ~w(public_key asset_hash)
   @optional_fields ~w()
 
-  def changeset(account, params \\ nil) do
-    account
-    |> cast(params, @required_fields, @optional_fields)
-    |> validate_encoding(:public_key)
-    |> validate_existence(:asset_hash, Asset)
+  def changeset(account, params, opts \\ nil) do
+    no_db_changeset = 
+      account
+      |> cast(params, @required_fields, @optional_fields)
+      |> validate_encoding(:public_key)
+    
+    unless opts[:skip_db] do
+      no_db_changeset
+      |> validate_existence(:asset_hash, Asset)
+    else
+      no_db_changeset
+    end
   end
   
   def create(changeset) do
-    Repo.insert(changeset)
+    Repo.transaction fn ->
+      if changeset.valid? do
+        Repo.insert(changeset)
+      else
+        Repo.rollback :invalid_changeset
+      end
+    end
   end
 end

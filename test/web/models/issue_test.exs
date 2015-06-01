@@ -33,10 +33,22 @@ defmodule Hyperledger.ModelTest.Issue do
     assert cs.valid? == false
   end
   
-  test "`create` inserts a changeset into the db", %{params: params, auth_key: auth_key} do
-    Issue.changeset(%Issue{}, params, auth_key)
-    |> Issue.create
-
+  test "`changeset` can skip db checks", %{auth_key: auth_key} do
+    asset_hash = :crypto.rand_bytes(32) |> Base.encode16
+    params = %{
+      uuid: Ecto.UUID.generate,
+      asset_hash: asset_hash,
+      amount: 100
+    }
+    
+    cs = Issue.changeset(%Issue{}, params, auth_key, skip_db: true)
+    assert cs.valid? == true
+  end
+  
+  test "`create` inserts a valid changeset into the db", %{params: params, auth_key: auth_key} do
+    cs = Issue.changeset(%Issue{}, params, auth_key)
+    
+    assert {:ok, %Issue{}} = Issue.create(cs)
     assert Repo.get(Issue, params[:uuid]) != nil
   end
 
@@ -47,5 +59,12 @@ defmodule Hyperledger.ModelTest.Issue do
     l = Repo.get(Asset, params[:asset_hash])
     a = Repo.one(assoc(l, :primary_account))
     assert a.balance == 100
+  end
+  
+  test "`create` rolls back when changeset is invalid", %{params: params, auth_key: auth_key} do
+    params = Map.merge(params, %{asset_hash: "123"})
+    cs = Issue.changeset(%Issue{}, params, auth_key)
+    
+    assert {:error, _} = Issue.create(cs)
   end
 end

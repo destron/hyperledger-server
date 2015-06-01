@@ -14,7 +14,7 @@ defmodule Hyperledger.IssueControllerTest do
     params = issue_params(asset.hash)
     public_key = asset.public_key
     secret_key = SecretStore.get(secret_store, public_key)
-    sig = sign(params, secret_key) |> Base.encode16
+    sig = sign(params, secret_key)
     
     {:ok, asset: asset, params: params, public_key: public_key, sig: sig}
   end

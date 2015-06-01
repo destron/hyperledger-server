@@ -5,8 +5,8 @@ defmodule Hyperledger.ModelTest.Account do
   
   setup do
     {:ok, asset} = create_asset
-    {pk, _sk} = :crypto.generate_key(:ecdh, :secp256k1)
-    {:ok, asset: asset, pk: Base.encode16(pk)}
+    {pk, _sk} = key_pair
+    {:ok, asset: asset, pk: pk}
   end
   
   test "`changeset` validates encoding of key", %{asset: asset} do
@@ -21,10 +21,23 @@ defmodule Hyperledger.ModelTest.Account do
     assert cs.valid? == false
   end
 
-  test "`create` inserts a valid record with balance of 0", %{asset: asset, pk: pk} do
-    Account.changeset(%Account{}, %{asset_hash: asset.hash, public_key: pk})
-    |> Account.create
+  test "`changeset` can skip checking the db", %{pk: pk} do
+    params = %{asset_hash: "0000", public_key: pk}
+    cs = Account.changeset(%Account{}, params, skip_db: true)
 
+    assert cs.valid? == true
+  end
+
+  test "`create` inserts a valid record with balance of 0", %{asset: asset, pk: pk} do
+    cs = Account.changeset(%Account{}, %{asset_hash: asset.hash, public_key: pk})
+    
+    assert {:ok, %Account{}} = Account.create(cs)
     assert Repo.get(Account, pk).balance == 0
+  end
+  
+  test "`create` with a bad changeset returns :error", %{asset: asset} do
+    cs = Account.changeset(%Account{}, %{asset_hash: asset.hash, public_key: "123"})
+    
+    assert {:error, _} = Account.create(cs)
   end
 end

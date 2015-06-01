@@ -19,6 +19,7 @@ defmodule Hyperledger.ModelCase do
       import Ecto.Query, only: [from: 2]
       # Import factory functions
       import Hyperledger.TestFactory
+      import Hyperledger.Crypto
     end
   end
 

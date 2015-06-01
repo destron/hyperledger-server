@@ -9,6 +9,7 @@ defmodule Hyperledger.Node do
   alias Hyperledger.Node
   alias Hyperledger.PrepareConfirmation
   alias Hyperledger.CommitConfirmation
+  alias Hyperledger.Crypto
   
   schema "nodes" do
     field :url, :string
@@ -39,26 +40,45 @@ defmodule Hyperledger.Node do
   end
     
   def quorum do
-    node_count = Repo.all(Node) |> Enum.count
-    node_count - div(node_count - 1, 3)
+    count - div(count - 1, 3)
   end
   
-  def broadcast(id, data) do
+  def prepare_quorum do
+    quorum - 1
+  end
+  
+  def count do
+    Repo.all(Node) |> Enum.count
+  end
+  
+  def broadcast(id, path, data) do
     Repo.all(Node)
     |> Enum.reject(&(&1 == current))
     |> Enum.each fn node ->
          try do
            Logger.info "Posting log entry #{id} to #{node.url}"
-           post_log(node.url, data)
+           post_log(node.url, path, data)
          rescue
-           _ -> Logger.info "Error posting to replica node @ #{node.url}"
+           error ->
+             Logger.info "Error posting to replica node @ #{node.url}"
          end
        end
   end
   
-  def post_log(url, data) do
-    HTTPotion.post "#{url}/log",
-      headers: ["Content-Type": "application/json"],
+  def post_log(url, path, data) do
+    sig = Crypto.sign(data, secret_key)
+    HTTPotion.post "#{url}/#{path}",
+      headers: [
+        "content-type": "application/json",
+        "authorization": "Hyper Key=#{current.public_key}, Signature=#{sig}"
+      ],
       body: Poison.encode!(data)
+  end
+  
+  defp secret_key do
+    case System.get_env("SECRET_KEY") do
+      nil -> raise "SECRET_KEY env not set"
+      secret -> Base.decode16!(secret)
+    end
   end
 end

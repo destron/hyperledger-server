@@ -7,10 +7,9 @@ defmodule Hyperledger.ModelTest.Transfer do
   
   setup do
     {:ok, asset} = create_asset
-    {d_pk, _sk} = key_pair
-    dest_key = Base.encode16(d_pk)
+    {dest_key, _sk} = key_pair
     
-    destination =
+    {:ok, destination} =
       %Account{}
       |> Account.changeset(%{public_key: dest_key, asset_hash: asset.hash})
       |> Account.create
@@ -55,6 +54,21 @@ defmodule Hyperledger.ModelTest.Transfer do
     assert cs.valid? == false
   end
   
+  test "`changeset` can skip db checks" do
+    source_key = :crypto.rand_bytes(32) |> Base.encode16
+    dest_key   = :crypto.rand_bytes(32) |> Base.encode16
+    params =
+      %{
+        uuid: Ecto.UUID.generate,
+        source_public_key: source_key,
+        destination_public_key: dest_key,
+        amount: 100
+      }
+    cs = Transfer.changeset(%Transfer{}, params, source_key, skip_db: true)
+    
+    assert cs.valid? == true
+  end
+  
   test "`changeset` validates the authorisation key matches", %{params: params} do
     cs = Transfer.changeset(%Transfer{}, params, "0000")
     
@@ -62,9 +76,9 @@ defmodule Hyperledger.ModelTest.Transfer do
   end
     
   test "`create` inserts a changeset into the db", %{params: params, auth_key: source_key} do
-    Transfer.changeset(%Transfer{}, params, source_key)
-    |> Transfer.create
+    cs = Transfer.changeset(%Transfer{}, params, source_key)
     
+    assert {:ok, %Transfer{}} = Transfer.create(cs)
     assert Repo.get(Transfer, params.uuid) != nil
   end
 
@@ -77,5 +91,11 @@ defmodule Hyperledger.ModelTest.Transfer do
 
     d = Repo.get(Account, params.destination_public_key)
     assert d.balance == 100
+  end
+  
+  test "`create` rejects an invalid changeset", %{params: params} do
+    cs = Transfer.changeset(%Transfer{}, params, "0000")
+    
+    assert {:error, _} = Transfer.create(cs)
   end
 end

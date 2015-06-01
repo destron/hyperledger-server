@@ -1,6 +1,7 @@
 defmodule Hyperledger.TestFactory do
   import Hyperledger.ParamsHelpers, only: [underscore_keys: 1]
-
+  import Hyperledger.Crypto
+  
   alias Hyperledger.SecretStore
   alias Hyperledger.Node
   alias Hyperledger.Asset
@@ -8,10 +9,24 @@ defmodule Hyperledger.TestFactory do
   def create_node(n) do
     Node.create n, "http://localhost-#{n}", "#{n}"
   end
+  
+  def create_node_with_secret(n) do
+    {public, secret} = key_pair
+    node = Node.create(n, "http://localhost-#{n}", public)
+    {node, secret}
+  end
 
   def create_primary do
-    primary = create_node(1)
+    {primary, secret} = create_node_with_secret(1)
     System.put_env("NODE_URL", primary.url)
+    System.put_env("SECRET_KEY", Base.encode16(secret))
+    primary
+  end
+  
+  def create_primary_with_secret do
+    {primary, secret} = create_node_with_secret(1)
+    System.put_env("NODE_URL", primary.url)
+    {primary, secret}
   end
   
   def create_asset(contract \\ "123", secret_store \\ nil) do
@@ -22,11 +37,8 @@ defmodule Hyperledger.TestFactory do
   end
   
   def asset_params(contract \\ "123", secret_store \\ nil) do
-    hash = :crypto.hash(:sha256, contract)
     {pk, sk} = key_pair
     {pa_pk, pa_sk} = key_pair
-    pk = Base.encode16(pk)
-    pa_pk = Base.encode16(pa_pk)
     
     if secret_store do
       SecretStore.put(secret_store, pk, sk)
@@ -35,7 +47,7 @@ defmodule Hyperledger.TestFactory do
     
     %{
       asset: %{
-        hash: Base.encode16(hash),
+        hash: hash(contract),
         publicKey: pk,
         primaryAccountPublicKey: pa_pk
       }
@@ -44,7 +56,6 @@ defmodule Hyperledger.TestFactory do
   
   def account_params(asset_hash, secret_store) do
     {pk, sk} = key_pair
-    pk = Base.encode16(pk)
     SecretStore.put(secret_store, pk, sk)
     
     %{
@@ -78,7 +89,7 @@ defmodule Hyperledger.TestFactory do
   
   def log_entry_params(command, params, public_key, secret_store) do
     secret_key = SecretStore.get(secret_store, public_key)
-    signature = sign(params, secret_key) |> Base.encode16
+    signature = sign(params, secret_key)
     %{
       logEntry: %{
         command: command,
@@ -89,11 +100,33 @@ defmodule Hyperledger.TestFactory do
     }
   end
   
-  def sign(params, secret_key) do
-    :crypto.sign(:ecdsa, :sha256, Poison.encode!(params), [secret_key, :secp256k1])
+  def prepare_params(id, view_id, command, params, public_key, secret_store) do
+    secret_key = SecretStore.get(secret_store, public_key)
+    signature = sign(params, secret_key)
+    %{
+      prepare: %{
+        id: id,
+        view_id: view_id,
+        command: command,
+        data: Poison.encode!(params),
+        authentication_key: public_key,
+        signature: signature
+      }
+    }
   end
   
-  def key_pair do
-    :crypto.generate_key(:ecdh, :secp256k1)
+  def commit_params(id, view_id, command, params, public_key, secret_store) do
+    secret_key = SecretStore.get(secret_store, public_key)
+    signature = sign(params, secret_key)
+    %{
+      commit: %{
+        id: id,
+        view_id: view_id,
+        command: command,
+        data: Poison.encode!(params),
+        authentication_key: public_key,
+        signature: signature
+      }
+    }
   end
 end

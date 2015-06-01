@@ -1,5 +1,6 @@
 defmodule Hyperledger.ModelTest.Node do
   use Hyperledger.ModelCase
+  import Mock
   
   alias Hyperledger.Node
       
@@ -39,5 +40,36 @@ defmodule Hyperledger.ModelTest.Node do
     
     create_node(4)
     assert Node.quorum == 3
+  end
+  
+  test "prepare quorum returns 2f" do
+    node = create_node(1)
+    System.put_env("NODE_URL", node.url)
+    
+    assert Node.prepare_quorum == 0
+    
+    create_node(2)
+    
+    assert Node.prepare_quorum == 1
+    
+    create_node(3)
+    
+    assert Node.prepare_quorum == 2
+    
+    create_node(4)
+      
+    assert Node.prepare_quorum == 2
+  end
+  
+  test "post_log POSTS authed json to url" do
+    create_primary
+    with_mock HTTPotion, post: fn url, [headers: h, body: _] ->
+      assert h[:"content-type"] == "application/json"
+      assert h[:authorization] =~ ~r/^Hyper Key=.+ Signature=.+$/
+      assert url == "localhost/log"
+      %HTTPotion.Response{status_code: 201}
+    end do
+      Node.post_log("localhost", "log", %{})
+    end
   end
 end
