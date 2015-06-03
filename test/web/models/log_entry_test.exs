@@ -21,28 +21,35 @@ defmodule Hyperledger.LogEntryModelTest do
   defp changeset_for_asset(contract, secret_store) do
     params = asset_params(contract, secret_store)
     public_key = params.asset[:publicKey]
-    gen_changeset("asset/create", params, public_key, secret_store)
+    gen_create_changeset("asset/create", params, public_key, secret_store)
   end
   
   defp changeset_for_account(asset_hash, secret_store) do
     params = account_params(asset_hash, secret_store)
     public_key = params.account[:publicKey]
-    gen_changeset("account/create", params, public_key, secret_store)
+    gen_create_changeset("account/create", params, public_key, secret_store)
   end
   
   defp changeset_for_issue(asset, secret_store) do
     params = issue_params(asset.hash)
-    gen_changeset("issue/create", params, asset.public_key, secret_store)
+    gen_create_changeset("issue/create", params, asset.public_key, secret_store)
   end
   
   defp changeset_for_transfer(source_key, dest_key, secret_store) do
     params = transfer_params(source_key, dest_key)
-    gen_changeset("transfer/create", params, source_key, secret_store)
+    gen_create_changeset("transfer/create", params, source_key, secret_store)
   end
   
-  defp gen_changeset(command, params, public_key, secret_store) do
+  defp gen_create_changeset(command, params, public_key, secret_store) do
     params = log_entry_params(command, params, public_key, secret_store)
     LogEntry.changeset(%LogEntry{}, :create, params[:logEntry])
+  end
+  
+  defp gen_insert_changeset(id, view_id, command, params, public_key, secret_store) do
+    params =
+      log_entry_params(command, params, public_key, secret_store)[:logEntry]
+      |> Map.merge(%{id: id, view_id: view_id})
+    LogEntry.changeset(%LogEntry{}, :insert, params)
   end
   
   defp sample_asset_data do
@@ -55,16 +62,28 @@ defmodule Hyperledger.LogEntryModelTest do
     {:ok, secret_store: secret_store}
   end
   
-  test "`changeset` validates signature" do
+  test "`changeset` for create validates signature" do
     {:ok, alt_store} = SecretStore.start_link
     {pk, _} = key_pair
     {_, sk} = key_pair
     SecretStore.put(alt_store, pk, sk)
-    cs = gen_changeset("asset/create", asset_params, pk, alt_store)
+    cs = gen_create_changeset("asset/create", asset_params, pk, alt_store)
 
     assert cs.valid? == false
     
     cs = changeset_for_asset
+    
+    assert cs.valid? == true
+  end
+  
+  test "`changeset` for insert validates id and view", %{secret_store: secret_store} do
+    params = asset_params("{}", secret_store)
+    public_key = params.asset[:publicKey]
+    cs = gen_insert_changeset(nil, 1, "asset/create", params, public_key, secret_store)
+    
+    assert cs.valid? == false
+    
+    cs = gen_insert_changeset(1, 1, "asset/create", params, public_key, secret_store)
     
     assert cs.valid? == true
   end
@@ -308,7 +327,7 @@ defmodule Hyperledger.LogEntryModelTest do
     dest_params = account_params(asset.hash, secret_store)
     dest_key = dest_params.account[:publicKey]
     LogEntry.create(
-      gen_changeset(
+      gen_create_changeset(
         "account/create",
         dest_params,
         dest_key,

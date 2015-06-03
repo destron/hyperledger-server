@@ -22,6 +22,7 @@ defmodule Hyperledger.LogEntry do
     field :data, :string
     field :authentication_key, :string
     field :signature, :string
+    
     field :prepared, :boolean, default: false
     field :committed, :boolean, default: false
     field :executed, :boolean, default: false
@@ -34,11 +35,15 @@ defmodule Hyperledger.LogEntry do
   end
   
   @required_fields ~w(command data authentication_key signature)
-  @optional_fields ~w()
   
-  def changeset(log_entry, :create, params \\ nil) do
+  def changeset(log_entry, moment, params \\ nil) do
+    if moment == :insert do
+      required = @required_fields ++ ~w(id view_id)
+    else
+      required = @required_fields
+    end
     log_entry
-    |> cast(params, @required_fields, @optional_fields)
+    |> cast(params, required, [])
     |> validate_encoding(:authentication_key)
     |> validate_encoding(:signature)
     |> validate_authenticity
