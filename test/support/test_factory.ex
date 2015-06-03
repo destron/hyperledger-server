@@ -9,10 +9,22 @@ defmodule Hyperledger.TestFactory do
   def create_node(n) do
     Node.create n, "http://localhost-#{n}", "#{n}"
   end
+  
+  def create_node_with_secret(n) do
+    {public, secret} = key_pair
+    node = Node.create(n, "http://localhost-#{n}", public)
+    {node, secret}
+  end
 
   def create_primary do
     primary = create_node(1)
     System.put_env("NODE_URL", primary.url)
+  end
+  
+  def create_primary_with_secret do
+    {primary, secret} = create_node_with_secret(1)
+    System.put_env("NODE_URL", primary.url)
+    {primary, secret}
   end
   
   def create_asset(contract \\ "123", secret_store \\ nil) do

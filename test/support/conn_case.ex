@@ -14,7 +14,7 @@ defmodule Hyperledger.ConnCase do
   """
 
   use ExUnit.CaseTemplate
-
+  
   using do
     quote do
       # Import conveniences for testing with connections
@@ -32,6 +32,14 @@ defmodule Hyperledger.ConnCase do
       # Import factory functions
       import Hyperledger.TestFactory
       import Hyperledger.Crypto
+      
+      def post_authentic_json(url, params, {public, secret}) do
+        signature = Hyperledger.Crypto.sign(params, secret)
+        conn()
+        |> put_req_header("content-type", "application/json")
+        |> put_req_header("authorization", "Hyper Key=#{public}, Signature=#{signature}")
+        |> post url, Poison.encode!(params)
+      end
     end
   end
 
