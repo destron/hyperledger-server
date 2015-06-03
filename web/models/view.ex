@@ -4,13 +4,16 @@ defmodule Hyperledger.View do
   alias Hyperledger.Repo
   alias Hyperledger.View
   alias Hyperledger.LogEntry
+  alias Hyperledger.CloseConfirmation
   alias Hyperledger.Node
   
   schema "views" do
+    field :closed, :boolean, default: false
     timestamps
       
     belongs_to :primary, Node
     has_many :log_entries, LogEntry
+    has_many :close_confirmations, CloseConfirmation
   end
   
   def append do
@@ -30,6 +33,15 @@ defmodule Hyperledger.View do
     else
       Repo.get(View, id)
       |> Repo.preload(:primary)
+    end
+  end
+  
+  def check_and_close(view) do
+    close_count = Repo.all(assoc(view, :close_confirmations)) |> Enum.count
+    node_count = Repo.all(Node) |> Enum.count
+    close_quorum = (node_count * 2 / 3) |> Float.floor
+    if close_count >= close_quorum do
+      %{ view | closed: true } |> Repo.update
     end
   end
 end

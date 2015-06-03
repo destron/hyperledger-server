@@ -2,12 +2,17 @@ defmodule Hyperledger.ModelTest.View do
   use Hyperledger.ModelCase
   
   alias Hyperledger.View
+  alias Hyperledger.Node
   
-  test "`append` creates a view with an associated primary" do
+  setup do
     create_node(1)
     create_node(2)
     create_node(3)
     
+    :ok
+  end
+  
+  test "`append` creates a view with an associated primary" do
     view = View.append
     assert view.primary.id == 1
     
@@ -22,8 +27,6 @@ defmodule Hyperledger.ModelTest.View do
   end
   
   test "`current` gets the last view" do
-    create_node(1)
-
     View.append
     assert View.current.id == 1
     
@@ -32,14 +35,10 @@ defmodule Hyperledger.ModelTest.View do
   end
   
   test "`current` creates first view if non exist" do
-    create_node(1)
-    
     assert View.current.id == 1
   end
   
   test "`current` preloads the primary" do
-    node = create_node(1)
-    
-    assert View.current.primary == node
+    assert View.current.primary == Repo.get(Node, 1)
   end
 end
