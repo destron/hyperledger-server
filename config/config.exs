@@ -10,7 +10,7 @@ config :hyperledger, Hyperledger.Endpoint,
   url: [host: "localhost"],
   root: Path.expand("..", __DIR__),
   secret_key_base: "VaFIvdwH2aishtUT7jQQv+wYGqCwOBFqiwiS/kiwfMECrhXEWJrucN+Qd8SueGzi",
-  debug_errors: false,
+  render_errors: [format: "uber"],
   pubsub: [name: Hyperledger.PubSub, adapter: Phoenix.PubSub.PG2]
 
 # Configures Elixir's Logger
