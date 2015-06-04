@@ -76,7 +76,7 @@ defmodule Hyperledger.LogEntry do
           case Repo.get(LogEntry, id) do
             nil -> log_entry = Repo.insert(log_entry)
             saved_entry -> log_entry = saved_entry
-          end 
+          end
  
           # Prepares
           [%{node_id: Node.current.id, signature: "temp_signature"}]
@@ -191,31 +191,17 @@ defmodule Hyperledger.LogEntry do
     Repo.get(LogEntry, log_entry.id + 1)
   end
   
-  def as_json(log_entry, with_confirmation \\ true) do
-    body =
-      %{
-        logEntry: %{
-          id: log_entry.id,
-          view_id: log_entry.view_id,
-          command: log_entry.command,
-          data: log_entry.data,
-          authorisation_key: log_entry.authentication_key,
-          signature: log_entry.signature
-        }
+  def as_json(log_entry) do
+    %{
+      logEntry: %{
+        id: log_entry.id,
+        view_id: log_entry.view_id,
+        command: log_entry.command,
+        data: log_entry.data,
+        authorisation_key: log_entry.authentication_key,
+        signature: log_entry.signature
       }
-    
-    if with_confirmation do
-      log_entry = Repo.preload(log_entry, [:prepare_confirmations, :commit_confirmations])
-      prepares = Enum.map(log_entry.prepare_confirmations, fn conf ->
-        %{nodeId: conf.node_id, signature: conf.signature}
-      end)
-      commits = Enum.map(log_entry.commit_confirmations, fn conf ->
-        %{nodeId: conf.node_id, signature: conf.signature}
-      end)
-      body |> Map.merge(%{prepareConfirmations: prepares, commitConfirmation: commits})
-    else
-      body
-    end
+    }
   end
   
   defp validate_authenticity(changeset) do

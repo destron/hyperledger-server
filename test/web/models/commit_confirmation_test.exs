@@ -22,7 +22,7 @@ defmodule Hyperledger.ModelTest.CommitConfirmation do
     System.put_env("NODE_URL", primary.url)
     
     {:ok, log_entry} = LogEntry.create(changeset_for_asset)
-    data = LogEntry.as_json(log_entry, false)
+    data = LogEntry.as_json(log_entry)
     sig = sign(data, sk)
     {:ok, log_entry: log_entry, data: Poison.encode!(data), sig: sig}
   end
