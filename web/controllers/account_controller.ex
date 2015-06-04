@@ -20,13 +20,8 @@ defmodule Hyperledger.AccountController do
   end
   
   def create(conn, params) do
-    log_entry = %{
-      command: "account/create",
-      data: conn.private.raw_json_body,
-      authentication_key: conn.assigns[:authentication_key],
-      signature: conn.assigns[:signature]
-    }
-    changeset = LogEntry.changeset(%LogEntry{}, :create, log_entry)
+    log_params = log_entry_params("account/create", conn)
+    changeset = LogEntry.changeset(%LogEntry{}, :create, log_params)
     
     if changeset.valid? do
       LogEntry.create(changeset)

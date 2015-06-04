@@ -30,6 +30,8 @@ defmodule Hyperledger.Web do
 
       # Import URL helpers from the router
       import Hyperledger.Router.Helpers
+      
+      import Hyperledger.ApplicationController
     end
   end
 
