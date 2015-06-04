@@ -190,16 +190,25 @@ defmodule Hyperledger.LogEntryModelTest do
   test "commit confirmations are appended to the record and become marked as committed" do
     create_node(2)
     LogEntry.create(changeset_for_asset)
-    LogEntry.insert id: 1, view_id: 1, command: "asset/create",
-      data: sample_asset_data, prepare_confirmations: [
-        %{node_id: 2, signature: "temp_signature"}], commit_confirmations: []
-    
-    LogEntry.insert id: 1, view_id: 1, command: "asset/create",
-      data: sample_asset_data, prepare_confirmations: [],
+    LogEntry.insert(
+      id: 1,
+      view_id: 1,
+      command: "asset/create",
+      data: sample_asset_data,
+      prepare_confirmations: [%{node_id: 2, signature: "temp_signature"}],
+      commit_confirmations: []
+    )
+    LogEntry.insert(
+      id: 1,
+      view_id: 1,
+      command: "asset/create",
+      data: sample_asset_data,
+      prepare_confirmations: [],
       commit_confirmations: [%{node_id: 2, signature: "temp_signature"}]
-
+    )
+    
     assert Repo.all(CommitConfirmation) |> Enum.count == 2
-    assert Repo.get(LogEntry, 1).committed
+    assert Repo.get(LogEntry, 1).committed == true
   end
   
   test "inserting a log entry returns error if primary has no existing record" do

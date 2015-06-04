@@ -53,7 +53,7 @@ defmodule Hyperledger.LogEntry do
   
   def create(changeset) do
     Repo.transaction fn ->
-      id = (Repo.all(LogEntry) |> Enum.count) + 1
+      id = latest_id + 1
       
       log_entry =
         changeset
@@ -122,14 +122,11 @@ defmodule Hyperledger.LogEntry do
       prep_conf = build(log_entry, :prepare_confirmations)
       %{ prep_conf | signature: signature, node_id: node_id }
       |> Repo.insert
-      prep_conf_count = Repo.all(assoc(log_entry, :prepare_confirmations))
-                        |> Enum.count
       
-      if (prep_conf_count >= Node.quorum and !log_entry.prepared) do
-        log_entry = %{ log_entry | prepared: true } |> Repo.update
-        Logger.info "Log entry #{log_entry.id} prepared"
-        add_commit(log_entry, Node.current.id, "temp_signature")
-        Node.broadcast(log_entry.id, as_json(log_entry))
+      if (prepare_count(log_entry) >= Node.quorum and !log_entry.prepared) do
+        log_entry
+        |> mark_prepared
+        |> add_commit(Node.current.id, "temp_signature")
       end
     end
   end
@@ -140,21 +137,15 @@ defmodule Hyperledger.LogEntry do
       %{ commit_conf | signature: signature, node_id: node_id }
       |> Repo.insert
       
-      commit_conf_count = Repo.all(assoc(log_entry, :commit_confirmations))
-                          |> Enum.count
-          
-      if (commit_conf_count >= Node.quorum and !log_entry.committed) do
-        log_entry = %{ log_entry | committed: true} |> Repo.update
-        Logger.info "Log entry #{log_entry.id} comitted"
+      if (commit_count(log_entry) >= Node.quorum and !log_entry.committed) do
+        log_entry
+        |> mark_committed
         # If previous log entry has been executed then execute
-        prev = prev_entry(log_entry)
-        if is_nil(prev) or prev.executed do
-          execute(log_entry)
-        end
+        |> cond_execute
       end
     end
   end
-  
+      
   def execute(log_entry) do
     Repo.transaction fn ->
       params = Poison.decode!(log_entry.data) |> underscore_keys
@@ -177,20 +168,10 @@ defmodule Hyperledger.LogEntry do
       end
     
       # Mark as executed and check if there's a follow entry to execute
-      %{ log_entry | executed: true } |> Repo.update
-      next = next_entry(log_entry)
-      unless is_nil(next) do
-        execute(next)
-      end
+      log_entry
+      |> mark_executed
+      |> execute_next
     end
-  end
-  
-  defp prev_entry(log_entry) do
-    Repo.get(LogEntry, log_entry.id - 1)
-  end
-  
-  defp next_entry(log_entry) do
-    Repo.get(LogEntry, log_entry.id + 1)
   end
   
   def as_json(log_entry) do
@@ -206,6 +187,72 @@ defmodule Hyperledger.LogEntry do
     }
   end
   
+  # Private fns
+  defp latest_id do
+    query = from l in LogEntry,
+       order_by: [desc: :id],
+          limit: 1,
+         select: l.id
+    
+    case Repo.one(query) do
+      nil -> 0
+      id -> id
+    end
+  end
+  
+  defp prepare_count(log_entry) do
+    Repo.one(from p in Prepare,
+           where: p.log_entry_id == ^log_entry.id,
+          select: count(p.id))
+  end
+  
+  defp commit_count(log_entry) do
+    Repo.one(from c in Commit,
+           where: c.log_entry_id == ^log_entry.id,
+          select: count(c.id))
+  end
+  
+  defp mark_prepared(log_entry) do
+    log_entry = %{ log_entry | prepared: true } |> Repo.update
+    Logger.info "Log entry #{log_entry.id} prepared"
+    Node.broadcast(log_entry.id, as_json(log_entry))
+    log_entry
+  end
+  
+  defp mark_committed(log_entry) do
+    log_entry = %{ log_entry | committed: true } |> Repo.update
+    Logger.info "Log entry #{log_entry.id} comitted"
+    log_entry
+  end
+  
+  defp mark_executed(log_entry) do
+    log_entry = %{ log_entry | executed: true } |> Repo.update
+    Logger.info "Log entry #{log_entry.id} executed"
+    log_entry
+  end
+  
+  defp cond_execute(log_entry) do
+    prev = prev_entry(log_entry)
+    if is_nil(prev) or prev.executed do
+      execute(log_entry)
+    end    
+  end
+  
+  defp execute_next(log_entry) do
+    next = next_entry(log_entry)
+    unless is_nil(next) do
+      execute(next)
+    end
+  end
+  
+  defp prev_entry(log_entry) do
+    Repo.get(LogEntry, log_entry.id - 1)
+  end
+  
+  defp next_entry(log_entry) do
+    Repo.get(LogEntry, log_entry.id + 1)
+  end
+    
   defp validate_authenticity(changeset) do
     key = changeset.changes.authentication_key
     sig = changeset.changes.signature
