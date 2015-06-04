@@ -140,8 +140,7 @@ defmodule Hyperledger.LogEntry do
       if (commit_count(log_entry) >= Node.quorum and !log_entry.committed) do
         log_entry
         |> mark_committed
-        # If previous log entry has been executed then execute
-        |> cond_execute
+        |> cond_execute # If previous log entry has been executed then execute
       end
     end
   end
@@ -151,19 +150,23 @@ defmodule Hyperledger.LogEntry do
       params = Poison.decode!(log_entry.data) |> underscore_keys
       case log_entry.command do
         "asset/create" ->
-          Asset.changeset(%Asset{}, params["asset"])
+          %Asset{}
+          |> Asset.changeset(params["asset"])
           |> Asset.create
           
         "account/create" ->
-          Account.changeset(%Account{}, params["account"])
+          %Account{}
+          |> Account.changeset(params["account"])
           |> Account.create
         
         "issue/create" ->
-          Issue.changeset(%Issue{}, params["issue"], log_entry.authentication_key)
+          %Issue{}
+          |> Issue.changeset(params["issue"], log_entry.authentication_key)
           |> Issue.create
         
         "transfer/create" ->
-          Transfer.changeset(%Transfer{}, params["transfer"], log_entry.authentication_key)
+          %Transfer{}
+          |> Transfer.changeset(params["transfer"], log_entry.authentication_key)
           |> Transfer.create
       end
     
