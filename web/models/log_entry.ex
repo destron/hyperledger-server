@@ -13,8 +13,9 @@ defmodule Hyperledger.LogEntry do
   alias Hyperledger.Transfer
   alias Hyperledger.Node
   alias Hyperledger.View
-  alias Hyperledger.PrepareConfirmation
-  alias Hyperledger.CommitConfirmation
+  alias Hyperledger.PrePrepare
+  alias Hyperledger.PrepareConfirmation, as: Prepare
+  alias Hyperledger.CommitConfirmation, as: Commit
   alias Hyperledger.Crypto
 
   schema "log_entries" do
@@ -30,14 +31,15 @@ defmodule Hyperledger.LogEntry do
     timestamps
     
     belongs_to :view, View
-    has_many :prepare_confirmations, PrepareConfirmation
-    has_many :commit_confirmations, CommitConfirmation
+    has_one :pre_prepares, PrePrepare
+    has_many :prepare_confirmations, Prepare
+    has_many :commit_confirmations, Commit
   end
   
   @required_fields ~w(command data authentication_key signature)
   
-  def changeset(log_entry, moment, params \\ nil) do
-    if moment == :insert do
+  def changeset(log_entry, mode, params \\ nil) do
+    if mode == :insert do
       required = @required_fields ++ ~w(id view_id)
     else
       required = @required_fields
