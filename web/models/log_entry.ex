@@ -122,12 +122,7 @@ defmodule Hyperledger.LogEntry do
       prep_conf = build(log_entry, :prepare_confirmations)
       %{ prep_conf | signature: signature, node_id: node_id }
       |> Repo.insert
-      
-      if (prepare_count(log_entry) >= Node.quorum and !log_entry.prepared) do
-        log_entry
-        |> mark_prepared
-        |> add_commit(Node.current.id, "temp_signature")
-      end
+      update_state(log_entry)
     end
   end
   
@@ -136,12 +131,7 @@ defmodule Hyperledger.LogEntry do
       commit_conf = build(log_entry, :commit_confirmations)
       %{ commit_conf | signature: signature, node_id: node_id }
       |> Repo.insert
-      
-      if (commit_count(log_entry) >= Node.quorum and !log_entry.committed) do
-        log_entry
-        |> mark_committed
-        |> cond_execute # If previous log entry has been executed then execute
-      end
+      update_state(log_entry)
     end
   end
       
@@ -203,6 +193,20 @@ defmodule Hyperledger.LogEntry do
     end
   end
   
+  defp update_state(log_entry) do
+    cond do
+      (prepare_count(log_entry) >= Node.quorum and !log_entry.prepared) ->
+        log_entry
+        |> mark_prepared
+        |> add_commit(Node.current.id, "temp_signature")
+      (commit_count(log_entry) >= Node.quorum and !log_entry.committed) ->
+        log_entry
+        |> mark_committed
+        |> cond_execute # If previous log entry has been executed then execute
+      true -> log_entry
+    end
+  end
+  
   defp prepare_count(log_entry) do
     Repo.one(from p in Prepare,
            where: p.log_entry_id == ^log_entry.id,
@@ -236,7 +240,7 @@ defmodule Hyperledger.LogEntry do
   
   defp cond_execute(log_entry) do
     prev = prev_entry(log_entry)
-    if is_nil(prev) or prev.executed do
+    if (is_nil(prev) or prev.executed) and !log_entry.executed do
       execute(log_entry)
     end    
   end
