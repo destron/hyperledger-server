@@ -22,5 +22,6 @@ defmodule Hyperledger.Router do
     get "pool", PoolController, :index
     resources "log", LogEntryController, only: [:index, :create]
     post "/prepare", PrepareController, :create
+    post "/commit", CommitController, :create
   end
 end
