@@ -10,12 +10,17 @@ defmodule Hyperledger.Router do
     pipe_through :api
 
     get "/", PageController, :index
-    get "pool", PoolController, :index
-    resources "log", LogEntryController, only: [:index, :create]
+    
+    # Domain
     resources "assets", AssetController, only: [:index, :create] do
       resources "issues", IssueController, only: [:index, :create]
     end
     resources "transfers", TransferController, only: [:index, :create]
     resources "accounts", AccountController, only: [:index, :show, :create]
+    
+    # Consensus
+    get "pool", PoolController, :index
+    resources "log", LogEntryController, only: [:index, :create]
+    post "/prepare", PrepareController, :create
   end
 end

@@ -97,4 +97,19 @@ defmodule Hyperledger.TestFactory do
       }
     }
   end
+  
+  def prepare_params(id, view_id, command, params, public_key, secret_store) do
+    secret_key = SecretStore.get(secret_store, public_key)
+    signature = sign(params, secret_key)
+    %{
+      prepare: %{
+        id: id,
+        view_id: view_id,
+        command: command,
+        data: Poison.encode!(params),
+        authentication_key: public_key,
+        signature: signature
+      }
+    }
+  end
 end
