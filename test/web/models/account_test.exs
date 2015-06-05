@@ -21,6 +21,13 @@ defmodule Hyperledger.ModelTest.Account do
     assert cs.valid? == false
   end
 
+  test "`changeset` can skip checking the db", %{pk: pk} do
+    params = %{asset_hash: "0000", public_key: pk}
+    cs = Account.changeset(%Account{}, params, skip_db: true)
+
+    assert cs.valid? == true
+  end
+
   test "`create` inserts a valid record with balance of 0", %{asset: asset, pk: pk} do
     Account.changeset(%Account{}, %{asset_hash: asset.hash, public_key: pk})
     |> Account.create
