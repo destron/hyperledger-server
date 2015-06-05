@@ -33,6 +33,18 @@ defmodule Hyperledger.ModelTest.Issue do
     assert cs.valid? == false
   end
   
+  test "`changeset` can skip db checks", %{auth_key: auth_key} do
+    asset_hash = :crypto.rand_bytes(32) |> Base.encode16
+    params = %{
+      uuid: Ecto.UUID.generate,
+      asset_hash: asset_hash,
+      amount: 100
+    }
+    
+    cs = Issue.changeset(%Issue{}, params, auth_key, skip_db: true)
+    assert cs.valid? == true
+  end
+  
   test "`create` inserts a changeset into the db", %{params: params, auth_key: auth_key} do
     Issue.changeset(%Issue{}, params, auth_key)
     |> Issue.create

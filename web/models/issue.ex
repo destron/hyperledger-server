@@ -22,19 +22,19 @@ defmodule Hyperledger.Issue do
   @required_fields ~w(uuid amount asset_hash)
   @optional_fields ~w()
 
-  def changeset(transfer, params \\ nil, auth_key) do
-    auth_asset = Repo.one(from a in Asset, where: a.public_key == ^auth_key, select: a)
-    auth_hash = 
-      case auth_asset do
-        nil -> []
-        asset -> [asset.hash]
-      end
-    
-    transfer
-    |> cast(params, @required_fields, @optional_fields)
-    |> validate_existence(:asset_hash, Asset)
-    |> validate_number(:amount, greater_than: 0)
-    |> validate_inclusion(:asset_hash, auth_hash)
+  def changeset(issue, params, auth_key, opts \\ nil) do
+    no_db_changeset = 
+      issue
+      |> cast(params, @required_fields, @optional_fields)
+      |> validate_number(:amount, greater_than: 0)
+      
+    unless opts[:skip_db] do
+      no_db_changeset
+      |> validate_existence(:asset_hash, Asset)
+      |> validate_authorisation(:asset_hash, auth_key)
+    else
+      no_db_changeset
+    end
   end
   
   def create(changeset) do
@@ -49,4 +49,18 @@ defmodule Hyperledger.Issue do
     end
   end
   
+  defp validate_authorisation(changeset, field, auth_key) do    
+    validate_change changeset, field, fn _field, asset_hash ->
+      case Repo.get(Asset, asset_hash) do
+        nil ->
+          [] # Already added error
+        asset ->
+          if asset.public_key != auth_key do
+            [:asset_hash, :unauthorized]
+          else
+            []
+          end
+      end
+    end    
+  end
 end
