@@ -54,6 +54,21 @@ defmodule Hyperledger.ModelTest.Transfer do
     assert cs.valid? == false
   end
   
+  test "`changeset` can skip db checks" do
+    source_key = :crypto.rand_bytes(32) |> Base.encode16
+    dest_key   = :crypto.rand_bytes(32) |> Base.encode16
+    params =
+      %{
+        uuid: Ecto.UUID.generate,
+        source_public_key: source_key,
+        destination_public_key: dest_key,
+        amount: 100
+      }
+    cs = Transfer.changeset(%Transfer{}, params, source_key, skip_db: true)
+    
+    assert cs.valid? == true
+  end
+  
   test "`changeset` validates the authorisation key matches", %{params: params} do
     cs = Transfer.changeset(%Transfer{}, params, "0000")
     
