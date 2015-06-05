@@ -8,14 +8,14 @@ defmodule Hyperledger.Crypto do
     {Base.encode16(public), secret}
   end
   
-  def sign(data, secret_key) do
+  def sign(data, secret) do
     message = Poison.encode!(data)
-    :crypto.sign(:ecdsa, @digest, message, [secret_key, @curve])
+    :crypto.sign(:ecdsa, @digest, message, [secret, @curve])
     |> Base.encode16
   end
   
-  def verify(message, signature, secret) do
-    :crypto.verify(:ecdsa, @digest, message, signature, [secret, @curve])
+  def verify(message, signature, public) do
+    :crypto.verify(:ecdsa, @digest, message, signature, [public, @curve])
   end
   
   def hash(message) do
