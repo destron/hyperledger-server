@@ -23,5 +23,6 @@ defmodule Hyperledger.Router do
     resources "log", LogEntryController, only: [:index, :create]
     post "/prepare", PrepareController, :create
     post "/commit", CommitController, :create
+    post "/close_confirmations", CloseConfirmationController, :create
   end
 end
