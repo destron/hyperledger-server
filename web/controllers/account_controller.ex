@@ -1,12 +1,13 @@
 defmodule Hyperledger.AccountController do
   use Hyperledger.Web, :controller
-  use Ecto.Model
+  import Hyperledger.ParamsHelpers
   
   alias Hyperledger.Repo
   alias Hyperledger.Account
   alias Hyperledger.LogEntry
   
   plug Hyperledger.Authentication when action in [:create]
+  plug :check_signature when action in [:create]
   plug :action
 
   def index(conn, _params) do
@@ -15,17 +16,24 @@ defmodule Hyperledger.AccountController do
   end
   
   def show(conn, params) do
-    account = Repo.first(Acccount, params["id"])
+    account = Repo.get(Acccount, params["id"])
     render conn, :show, account: account
   end
   
   def create(conn, params) do
-    log_params = log_entry_params("account/create", conn)
-    changeset = LogEntry.changeset(%LogEntry{}, :create, log_params)
+    params =
+      params
+      |> underscore_keys
+      |> Map.get("account", :empty)
+    changeset = Account.changeset(%Account{}, params, skip_db: true)
     
     if changeset.valid? do
-      LogEntry.create(changeset)
-      account = Repo.get(Account, params["account"]["publicKey"])
+      log_params = log_entry_params("account/create", conn)
+      %LogEntry{}
+      |> LogEntry.changeset(:create, log_params)
+      |> LogEntry.create
+      
+      account = Repo.get(Account, params["public_key"])
       conn
       |> put_status(:created)
       |> render :show, account: account
