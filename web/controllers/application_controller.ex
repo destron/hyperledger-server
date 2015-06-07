@@ -15,6 +15,18 @@ defmodule Hyperledger.ApplicationController do
     }
   end
   
+  def check_signature(conn, _params) do
+    {:ok, sig} = Base.decode16(conn.assigns[:signature])
+    {:ok, key} = Base.decode16(conn.assigns[:authentication_key])
+    if Hyperledger.Crypto.verify(conn.private.raw_json_body, sig, key) do
+      conn
+    else
+      conn
+      |> put_status(:unauthorized)
+      |> halt
+    end
+  end
+  
   def find_node_id(conn, _params) do
     find_by_public_key = from n in Node,
                        where: n.public_key == ^conn.assigns[:authentication_key],
