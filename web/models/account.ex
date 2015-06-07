@@ -35,6 +35,12 @@ defmodule Hyperledger.Account do
   end
   
   def create(changeset) do
-    Repo.insert(changeset)
+    Repo.transaction fn ->
+      if changeset.valid? do
+        Repo.insert(changeset)
+      else
+        Repo.rollback :invalid_changeset
+      end
+    end
   end
 end

@@ -9,7 +9,7 @@ defmodule Hyperledger.ModelTest.Transfer do
     {:ok, asset} = create_asset
     {dest_key, _sk} = key_pair
     
-    destination =
+    {:ok, destination} =
       %Account{}
       |> Account.changeset(%{public_key: dest_key, asset_hash: asset.hash})
       |> Account.create

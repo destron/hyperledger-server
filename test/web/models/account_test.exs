@@ -29,9 +29,15 @@ defmodule Hyperledger.ModelTest.Account do
   end
 
   test "`create` inserts a valid record with balance of 0", %{asset: asset, pk: pk} do
-    Account.changeset(%Account{}, %{asset_hash: asset.hash, public_key: pk})
-    |> Account.create
-
+    cs = Account.changeset(%Account{}, %{asset_hash: asset.hash, public_key: pk})
+    
+    assert {:ok, %Account{}} = Account.create(cs)
     assert Repo.get(Account, pk).balance == 0
+  end
+  
+  test "`create` with a bad changeset returns :error", %{asset: asset} do
+    cs = Account.changeset(%Account{}, %{asset_hash: asset.hash, public_key: "123"})
+    
+    assert {:error, _} = Account.create(cs)
   end
 end

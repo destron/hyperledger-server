@@ -14,7 +14,7 @@ defmodule Hyperledger.TransferControllerTest do
     dest_params =
       account_params(asset.hash, secret_store)
       |> Hyperledger.ParamsHelpers.underscore_keys
-    dest =
+    {:ok, dest} =
       %Account{}
       |> Account.changeset(dest_params["account"])
       |> Account.create
