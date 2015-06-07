@@ -34,15 +34,18 @@ defmodule Hyperledger.Asset do
   
   def create(changeset) do
     Repo.transaction fn ->
-      asset = Repo.insert(changeset)
+      if not(changeset.valid?) do
+        Repo.rollback :invalid_changset
+      end
       
+      asset = Repo.insert(changeset)
       account = build(asset, :primary_account)
       %{
         account |
         public_key: asset.primary_account_public_key,
         asset_hash: asset.hash
       } |> Repo.insert
-
+      
       asset
     end
   end
