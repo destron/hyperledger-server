@@ -76,6 +76,21 @@ defmodule Hyperledger.LogEntryModelTest do
     assert cs.valid? == true
   end
   
+  test "`changeset` validates data wihtout the db", %{secret_store: secret_store} do
+    {public, secret} = key_pair
+    SecretStore.put(secret_store, public, secret)
+    params =
+      %{
+        asset: %{
+          hash: "GJ9D68b3RCw2HgjzEhtH+TjMcaiYTNntB4W8xa8FhA==",
+          publicKey: public,
+          primaryAccountPublicKey: "foo bar"
+        }
+      }
+    cs = gen_create_changeset("asset/create", params, public, secret_store)
+    assert cs.valid? == false
+  end
+  
   test "`changeset` for insert validates id and view", %{secret_store: secret_store} do
     params = asset_params("{}", secret_store)
     public_key = params.asset[:publicKey]

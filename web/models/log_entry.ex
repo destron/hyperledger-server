@@ -50,6 +50,7 @@ defmodule Hyperledger.LogEntry do
     |> validate_encoding(:authentication_key)
     |> validate_encoding(:signature)
     |> validate_authenticity
+    |> validate_data
   end
   
   def create(changeset) do
@@ -284,6 +285,36 @@ defmodule Hyperledger.LogEntry do
             [{:data, :authentication_failed}]
           end
         _ -> []
+      end
+    end
+  end
+  
+  defp validate_data(changeset) do
+    log_entry = changeset.params
+    params = Poison.decode!(log_entry["data"]) |> underscore_keys
+    validate_change changeset, :data, fn _, _ ->
+      changeset = case log_entry["command"] do
+        "asset/create" ->
+          %Asset{}
+          |> Asset.changeset(params["asset"])
+        
+        "account/create" ->
+          %Account{}
+          |> Account.changeset(params["account"], skip_db: true)
+      
+        "issue/create" ->
+          %Issue{}
+          |> Issue.changeset(params["issue"], log_entry["authentication_key"], skip_db: true)
+      
+        "transfer/create" ->
+          %Transfer{}
+          |> Transfer.changeset(params["transfer"], log_entry["authentication_key"], skip_db: true)
+      end
+      
+      if changeset.valid? do
+        []
+      else
+        [:data, :is_not_valid]
       end
     end
   end
