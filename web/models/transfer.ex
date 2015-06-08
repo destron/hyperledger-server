@@ -43,6 +43,10 @@ defmodule Hyperledger.Transfer do
   
   def create(changeset) do
     Repo.transaction fn ->
+      if not(changeset.valid?) do
+        Repo.rollback(:invalid_changeset)
+      end
+      
       transfer = Repo.insert(changeset)
       transfer = Repo.preload(transfer, [:source, :destination])
       
