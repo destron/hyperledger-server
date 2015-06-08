@@ -27,6 +27,7 @@ defmodule Hyperledger.LogEntry do
     field :prepared, :boolean, default: false
     field :committed, :boolean, default: false
     field :executed, :boolean, default: false
+    field :accepted, :boolean
 
     timestamps
     
@@ -140,29 +141,33 @@ defmodule Hyperledger.LogEntry do
       params = Poison.decode!(log_entry.data) |> underscore_keys
       case log_entry.command do
         "asset/create" ->
-          %Asset{}
-          |> Asset.changeset(params["asset"])
-          |> Asset.create
+          result = 
+            %Asset{}
+            |> Asset.changeset(params["asset"])
+            |> Asset.create
           
         "account/create" ->
-          %Account{}
-          |> Account.changeset(params["account"])
-          |> Account.create
+          result =
+            %Account{}
+            |> Account.changeset(params["account"])
+            |> Account.create
         
         "issue/create" ->
-          %Issue{}
-          |> Issue.changeset(params["issue"], log_entry.authentication_key)
-          |> Issue.create
+          result =
+            %Issue{}
+            |> Issue.changeset(params["issue"], log_entry.authentication_key)
+            |> Issue.create
         
         "transfer/create" ->
-          %Transfer{}
-          |> Transfer.changeset(params["transfer"], log_entry.authentication_key)
-          |> Transfer.create
+          result =
+            %Transfer{}
+            |> Transfer.changeset(params["transfer"], log_entry.authentication_key)
+            |> Transfer.create
       end
-    
+      
       # Mark as executed and check if there's a follow entry to execute
       log_entry
-      |> mark_executed
+      |> mark_executed(result)
       |> execute_next
     end
   end
@@ -232,8 +237,15 @@ defmodule Hyperledger.LogEntry do
     log_entry
   end
   
-  defp mark_executed(log_entry) do
-    log_entry = %{ log_entry | executed: true } |> Repo.update
+  defp mark_executed(log_entry, result) do
+    case result do
+      {:ok, _} -> accepted? = true
+      _ -> accepted? = false
+    end
+    
+    log_entry =
+      %{ log_entry | executed: true, accepted: accepted? }
+      |> Repo.update
     Logger.info "Log entry #{log_entry.id} executed"
     log_entry
   end

@@ -97,7 +97,7 @@ defmodule Hyperledger.LogEntryModelTest do
   
   test "creating a log entry also appends a prepare confirmation from self" do
     {:ok, log_entry} = LogEntry.create(changeset_for_asset)
-        
+    
     assert Repo.all(assoc(log_entry, :prepare_confirmations)) |> Enum.count == 1
   end
   
@@ -305,6 +305,16 @@ defmodule Hyperledger.LogEntryModelTest do
     LogEntry.add_commit(log_entry_1, node.id, "temp_signature")
     
     assert Repo.all(Asset) |> Enum.count == 2
+  end
+  
+  test "executing a log entry saves the accepted state", %{secret_store: secret_store} do
+    log_entry = changeset_for_asset("123", secret_store) |> Repo.insert
+    
+    assert log_entry.accepted == nil
+    
+    LogEntry.execute(log_entry)
+    
+    assert Repo.get(LogEntry, log_entry.id).accepted == true
   end
   
   test "executing log entry creates asset with a primary account" do
