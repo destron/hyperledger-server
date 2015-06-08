@@ -39,6 +39,10 @@ defmodule Hyperledger.Issue do
   
   def create(changeset) do
     Repo.transaction fn ->
+      if not(changeset.valid?) do
+        Repo.rollback(:invalid_changeset)
+      end
+      
       issue = Repo.insert(changeset)
       issue = Repo.preload(issue, [:asset, :account])
 
