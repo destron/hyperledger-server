@@ -39,8 +39,15 @@ defmodule Hyperledger.Node do
   end
     
   def quorum do
-    node_count = Repo.all(Node) |> Enum.count
-    node_count - div(node_count - 1, 3)
+    count - div(count - 1, 3)
+  end
+  
+  def prepare_quorum do
+    quorum - 1
+  end
+  
+  def count do
+    Repo.all(Node) |> Enum.count
   end
   
   def broadcast(id, data) do

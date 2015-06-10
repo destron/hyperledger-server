@@ -40,4 +40,23 @@ defmodule Hyperledger.ModelTest.Node do
     create_node(4)
     assert Node.quorum == 3
   end
+  
+  test "prepare quorum returns 2f" do
+    node = create_node(1)
+    System.put_env("NODE_URL", node.url)
+    
+    assert Node.prepare_quorum == 0
+    
+    create_node(2)
+    
+    assert Node.prepare_quorum == 1
+    
+    create_node(3)
+    
+    assert Node.prepare_quorum == 2
+    
+    create_node(4)
+      
+    assert Node.prepare_quorum == 2
+  end
 end
