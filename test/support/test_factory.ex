@@ -17,8 +17,10 @@ defmodule Hyperledger.TestFactory do
   end
 
   def create_primary do
-    primary = create_node(1)
+    {primary, secret} = create_node_with_secret(1)
     System.put_env("NODE_URL", primary.url)
+    System.put_env("SECRET_KEY", Base.encode16(secret))
+    primary
   end
   
   def create_primary_with_secret do
