@@ -110,10 +110,19 @@ defmodule Hyperledger.LogEntryModelTest do
     assert log_entry.view.id == 1
   end
   
-  test "creating a log entry also appends a prepare confirmation from self" do
+  test "creating a log entry also appends a pre-prepare from self" do
     {:ok, log_entry} = LogEntry.create(changeset_for_asset)
     
-    assert Repo.all(assoc(log_entry, :prepare_confirmations)) |> Enum.count == 1
+    assert Repo.get(LogEntry, log_entry.id).pre_prepared == true
+    assert Repo.all(assoc(log_entry, :pre_prepares)) |> Enum.count == 1
+  end
+  
+  test "creating a log entry with only one node prepares and commits immediately" do
+    {:ok, log_entry} = LogEntry.create(changeset_for_asset)
+    log_entry = Repo.get(LogEntry, log_entry.id)
+    
+    assert log_entry.prepared == true
+    assert log_entry.committed == true
   end
   
   test "creating a log entry broadcasts a prepare to other nodes" do
@@ -226,53 +235,54 @@ defmodule Hyperledger.LogEntryModelTest do
     assert Repo.get(LogEntry, 1).committed == true
   end
   
-  test "inserting a log entry returns error if primary has no existing record" do
-    assert {:error, _} = LogEntry.insert id: 1, view_id: 1, command: "asset/create",
-      data: sample_asset_data, prepare_confirmations: [], commit_confirmations: []
-  end
+  # test "inserting a log entry returns error if primary has no existing record" do
+  #   assert {:error, _} = LogEntry.insert id: 1, view_id: 1, command: "asset/create",
+  #     data: sample_asset_data, prepare_confirmations: [], commit_confirmations: []
+  # end
+  #
+  # test "inserting a log entry returns ok if primary has record which matches" do
+  #   LogEntry.create(changeset_for_asset)
+  #   assert {:ok, %LogEntry{}} = LogEntry.insert(
+  #     id: 1, view_id: 1, command: "asset/create", data: sample_asset_data,
+  #     prepare_confirmations: [%{node_id: 1, signature: "temp_signature"},
+  #                             %{node_id: 2, signature: "temp_signature"}],
+  #     commit_confirmations: [])
+  #   assert Repo.all(PrepareConfirmation) |> Enum.count == 2
+  #   assert Repo.get(LogEntry, 1).prepared == true
+  # end
+  #
+  # test "inserting a log entry returns ok if node is not primary" do
+  #   node = create_node(2)
+  #   System.put_env("NODE_URL", node.url)
+  #
+  #   assert {:ok, %LogEntry{}} = LogEntry.insert(
+  #     id: 1, view_id: 1, command: "asset/create", data: sample_asset_data,
+  #     prepare_confirmations: [%{node_id: 1, signature: "temp_signature"}],
+  #     commit_confirmations: [])
+  # end
+  #
+  # test "inserting a log entry saves the confirmations and appends its own" do
+  #   node = create_node(2)
+  #   System.put_env("NODE_URL", node.url)
+  #
+  #   LogEntry.insert id: 1, view_id: 1, command: "asset/create",
+  #     data: sample_asset_data, prepare_confirmations: [%{
+  #       node_id: 1, signature: "temp_signature"}], commit_confirmations: []
+  #
+  #   assert Repo.all(PrepareConfirmation) |> Enum.count == 2
+  #
+  #   LogEntry.insert id: 1, view_id: 1, command: "asset/create", data: sample_asset_data,
+  #     prepare_confirmations: [%{node_id: 1, signature: "temp_signature"}],
+  #     commit_confirmations: [%{node_id: 1, signature: "temp_signature"}]
+  #
+  #   assert Repo.all(CommitConfirmation) |> Enum.count == 2
+  # end
   
-  test "inserting a log entry returns ok if primary has record which matches" do
-    LogEntry.create(changeset_for_asset)
-    assert {:ok, %LogEntry{}} = LogEntry.insert(
-      id: 1, view_id: 1, command: "asset/create", data: sample_asset_data,
-      prepare_confirmations: [%{node_id: 1, signature: "temp_signature"},
-                              %{node_id: 2, signature: "temp_signature"}],
-      commit_confirmations: [])
-    assert Repo.all(PrepareConfirmation) |> Enum.count == 2
-    assert Repo.get(LogEntry, 1).prepared == true
-  end
-    
-  test "inserting a log entry returns ok if node is not primary" do
-    node = create_node(2)
-    System.put_env("NODE_URL", node.url)
-
-    assert {:ok, %LogEntry{}} = LogEntry.insert(
-      id: 1, view_id: 1, command: "asset/create", data: sample_asset_data,
-      prepare_confirmations: [%{node_id: 1, signature: "temp_signature"}],
-      commit_confirmations: [])
-  end
-  
-  test "inserting a log entry saves the confirmations and appends its own" do
-    node = create_node(2)
-    System.put_env("NODE_URL", node.url)
-
-    LogEntry.insert id: 1, view_id: 1, command: "asset/create",
-      data: sample_asset_data, prepare_confirmations: [%{
-        node_id: 1, signature: "temp_signature"}], commit_confirmations: []
-    
-    assert Repo.all(PrepareConfirmation) |> Enum.count == 2
-    
-    LogEntry.insert id: 1, view_id: 1, command: "asset/create", data: sample_asset_data,
-      prepare_confirmations: [%{node_id: 1, signature: "temp_signature"}],
-      commit_confirmations: [%{node_id: 1, signature: "temp_signature"}]
-    
-    assert Repo.all(CommitConfirmation) |> Enum.count == 2
-  end
-  
-  test "when a log entry passes the quorum for prepare confirmations it is marked as prepared" do
+  test "adding a prepare marks as prepared if quorum reached" do
     node = create_node(2)
     {:ok, log_entry} = LogEntry.create(changeset_for_asset)
     
+    assert log_entry.pre_prepared == true
     assert log_entry.prepared == false
     
     LogEntry.add_prepare(log_entry, node.id, "temp_signature")
@@ -333,15 +343,19 @@ defmodule Hyperledger.LogEntryModelTest do
   end
   
   test "executing log entry creates asset with a primary account" do
-    LogEntry.create(changeset_for_asset)
-        
+    log_entry = changeset_for_asset |> Repo.insert
+    
+    LogEntry.execute(log_entry)
+    
     assert Repo.all(Asset)   |> Enum.count == 1
     assert Repo.all(Account)  |> Enum.count == 1
   end
   
   test "executing log entry creates account", %{secret_store: secret_store} do
     {:ok, asset} = create_asset
-    LogEntry.create(changeset_for_account(asset.hash, secret_store))
+    log_entry = changeset_for_account(asset.hash, secret_store) |> Repo.insert
+    
+    LogEntry.execute(log_entry)
     
     assert Repo.all(LogEntry) |> Enum.count == 1
     assert Repo.all(Account)  |> Enum.count == 2
@@ -349,32 +363,29 @@ defmodule Hyperledger.LogEntryModelTest do
   
   test "executing log entry creates issue and changes primary wallet balances", %{secret_store: secret_store} do
     {:ok, asset} = create_asset("123", secret_store)
-    LogEntry.create(changeset_for_issue(asset, secret_store))
-        
+    log_entry = changeset_for_issue(asset, secret_store) |> Repo.insert
+    
+    LogEntry.execute(log_entry)
+       
     assert Repo.all(Issue)    |> Enum.count == 1
     assert Repo.get(Account, asset.primary_account_public_key).balance == 100
   end
   
   test "executing log entry creates transfer and changes wallet balances", %{secret_store: secret_store} do
     {:ok, asset} = create_asset("123", secret_store)
-    LogEntry.create(changeset_for_issue(asset, secret_store))
-    dest_params = account_params(asset.hash, secret_store)
-    dest_key = dest_params.account[:publicKey]
-    LogEntry.create(
-      gen_create_changeset(
-        "account/create",
-        dest_params,
-        dest_key,
-        secret_store
-      )
-    )
-        
-    LogEntry.create(
+    source = Repo.one(assoc(asset, :primary_account))
+    %{ source | balance: 100 } |> Repo.update
+    {dest_key, _} = key_pair
+    %Account{public_key: dest_key, asset_hash: asset.hash} |> Repo.insert
+    
+    log_entry =
       changeset_for_transfer(
         asset.primary_account_public_key,
-        dest_key, secret_store
-      )
-    )
+        dest_key,
+        secret_store
+      ) |> Repo.insert
+    
+    LogEntry.execute(log_entry)
     
     assert Repo.all(Transfer) |> Enum.count == 1
     assert Repo.get(Account, asset.primary_account_public_key).balance == 0

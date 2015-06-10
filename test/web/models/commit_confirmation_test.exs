@@ -5,7 +5,6 @@ defmodule Hyperledger.ModelTest.CommitConfirmation do
   
   alias Hyperledger.CommitConfirmation
   alias Hyperledger.LogEntry
-  alias Hyperledger.Node
   
   defp changeset_for_asset do
     {:ok, secret_store} = SecretStore.start_link
@@ -17,9 +16,8 @@ defmodule Hyperledger.ModelTest.CommitConfirmation do
   end
   
   setup do
-    {pk, sk} = key_pair
-    primary = Node.create(1, "http://localhost:4000", pk)
-    System.put_env("NODE_URL", primary.url)
+    create_primary
+    {:ok, sk} = System.get_env("SECRET_KEY") |> Base.decode16
     
     {:ok, log_entry} = LogEntry.create(changeset_for_asset)
     data = LogEntry.as_json(log_entry)

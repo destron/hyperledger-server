@@ -48,7 +48,8 @@ defmodule Hyperledger.PrepareConfirmation do
           else
             [{:data, :authentication_failed}]
           end
-        _ -> []
+        _ ->
+          []
       end
     end
   end

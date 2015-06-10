@@ -24,6 +24,7 @@ defmodule Hyperledger.LogEntry do
     field :authentication_key, :string
     field :signature, :string
     
+    field :pre_prepared, :boolean, default: false
     field :prepared, :boolean, default: false
     field :committed, :boolean, default: false
     field :executed, :boolean, default: false
@@ -61,8 +62,8 @@ defmodule Hyperledger.LogEntry do
         changeset
         |> change(%{id: id, view: View.current})
         |> Repo.insert
+        |> create_pre_prepare
 
-      add_prepare(log_entry, Node.current.id, "temp_signature")
       Node.broadcast(log_entry.id, as_json(log_entry))
       log_entry
     end
@@ -119,13 +120,31 @@ defmodule Hyperledger.LogEntry do
     end
   end
   
+  def create_pre_prepare(log_entry) do
+    params =
+      %{
+        log_entry_id: log_entry.id,
+        node_id: Node.current.id,
+        data: Poison.encode!(as_json(log_entry)),
+        signature: sign(log_entry)
+      }
+    
+    {:ok, log_entry} = Repo.transaction fn ->
+      PrePrepare.changeset(params)
+      |> PrePrepare.create
+      %{ log_entry | pre_prepared: true }
+      |> Repo.update
+    end
+    update_state(log_entry)
+  end
+  
   def add_prepare(log_entry, node_id, signature) do
     Repo.transaction fn ->
       prep_conf = build(log_entry, :prepare_confirmations)
       %{ prep_conf | signature: signature, node_id: node_id }
       |> Repo.insert
-      update_state(log_entry)
     end
+    update_state(log_entry)
   end
   
   def add_commit(log_entry, node_id, signature) do
@@ -133,7 +152,26 @@ defmodule Hyperledger.LogEntry do
       commit_conf = build(log_entry, :commit_confirmations)
       %{ commit_conf | signature: signature, node_id: node_id }
       |> Repo.insert
-      update_state(log_entry)
+    end
+    update_state(log_entry)
+  end
+  
+  def update_state(log_entry) do
+    cond do
+      log_entry.pre_prepared and
+      !log_entry.prepared and
+      prepare_count(log_entry) >= (Node.prepare_quorum) ->
+        log_entry
+        |> mark_prepared
+        |> add_commit(Node.current.id, "temp_signature")
+      
+      !log_entry.committed and
+      commit_count(log_entry) >= Node.quorum ->
+        log_entry
+        |> mark_committed
+        |> cond_execute # If previous log entry has been executed then execute
+      
+      true -> log_entry
     end
   end
       
@@ -198,21 +236,7 @@ defmodule Hyperledger.LogEntry do
       id -> id
     end
   end
-  
-  defp update_state(log_entry) do
-    cond do
-      (prepare_count(log_entry) >= Node.quorum and !log_entry.prepared) ->
-        log_entry
-        |> mark_prepared
-        |> add_commit(Node.current.id, "temp_signature")
-      (commit_count(log_entry) >= Node.quorum and !log_entry.committed) ->
-        log_entry
-        |> mark_committed
-        |> cond_execute # If previous log entry has been executed then execute
-      true -> log_entry
-    end
-  end
-  
+    
   defp prepare_count(log_entry) do
     Repo.one(from p in Prepare,
            where: p.log_entry_id == ^log_entry.id,
@@ -255,7 +279,8 @@ defmodule Hyperledger.LogEntry do
     prev = prev_entry(log_entry)
     if (is_nil(prev) or prev.executed) and !log_entry.executed do
       execute(log_entry)
-    end    
+    end
+    log_entry
   end
   
   defp execute_next(log_entry) do
@@ -263,6 +288,7 @@ defmodule Hyperledger.LogEntry do
     unless is_nil(next) do
       execute(next)
     end
+    log_entry
   end
   
   defp prev_entry(log_entry) do
@@ -271,6 +297,17 @@ defmodule Hyperledger.LogEntry do
   
   defp next_entry(log_entry) do
     Repo.get(LogEntry, log_entry.id + 1)
+  end
+  
+  defp sign(log_entry) do
+    case System.get_env("SECRET_KEY") do
+      nil ->
+        raise "SECRET_KEY env not found"
+      key ->
+        log_entry
+        |> as_json
+        |> Hyperledger.Crypto.sign(Base.decode16!(key))
+    end
   end
     
   defp validate_authenticity(changeset) do
