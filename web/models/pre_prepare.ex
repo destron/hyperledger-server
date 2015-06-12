@@ -1,11 +1,11 @@
 defmodule Hyperledger.PrePrepare do
   use Ecto.Model
+  import Hyperledger.Validations
   
   alias Hyperledger.PrePrepare
   alias Hyperledger.LogEntry
   alias Hyperledger.Node
   alias Hyperledger.Repo
-  alias Hyperledger.Crypto
   
   schema "pre_prepares" do
     field :data, :string
@@ -21,33 +21,12 @@ defmodule Hyperledger.PrePrepare do
   def changeset(params) do
     %PrePrepare{}
     |> cast(params, @required_fields, [])
-    |> validate_authenticity
+    |> validate_node_authenticity
   end
   
   def create(changeset) do
     Repo.transaction fn ->
       Repo.insert(changeset)
-    end
-  end
-  
-  defp validate_authenticity(changeset) do
-    key =
-      case Repo.get(Node, changeset.changes.node_id) do
-        nil -> ""
-        node -> node.public_key
-      end
-    sig = changeset.changes.signature
-    
-    validate_change changeset, :data, fn :data, body ->
-      case {Base.decode16(key), Base.decode16(sig)} do
-        {{:ok, key}, {:ok, sig}} ->
-          if Crypto.verify(body, sig, key) do
-            []
-          else
-            [{:data, :authentication_failed}]
-          end
-        _ -> []
-      end
     end
   end
 end
