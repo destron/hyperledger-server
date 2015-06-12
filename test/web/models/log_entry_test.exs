@@ -10,8 +10,8 @@ defmodule Hyperledger.LogEntryModelTest do
   alias Hyperledger.Account
   alias Hyperledger.Issue
   alias Hyperledger.Transfer
-  alias Hyperledger.PrepareConfirmation
   alias Hyperledger.CommitConfirmation
+  alias Hyperledger.Node
     
   defp changeset_for_asset do
     {:ok, secret_store} = SecretStore.start_link
@@ -125,68 +125,41 @@ defmodule Hyperledger.LogEntryModelTest do
     assert log_entry.committed == true
   end
   
-  test "creating a log entry broadcasts a prepare to other nodes" do
-    node = create_node(2)
-    headers = ["Content-Type": "application/json"]
-    
-    with_mock HTTPotion,
-    post: fn(_, _) -> %HTTPotion.Response{status_code: 201} end do
+  test "after create a primary broadcasts a pre-prepare to other nodes" do
+    with_mock Node, [:passthrough], broadcast: fn _, _ -> nil end do
       {:ok, log_entry} = LogEntry.create(changeset_for_asset)
-      body = LogEntry.as_json(log_entry) |> Poison.encode!
+      data = LogEntry.as_json(log_entry)
       
-      assert(
-        called(
-          HTTPotion.post(
-            "#{node.url}/log",
-            headers: headers,
-            body: body
-          )
-        )
-      )
+      assert called(Node.broadcast(log_entry.id, data))
     end
   end
   
-  test "inserting a log entry broadcasts a prepare to other nodes" do
-    inital_node_url = System.get_env("NODE_URL")
+  test "after create a replica broadcasts a prepare to other nodes" do
     node = create_node(2)
     System.put_env("NODE_URL", node.url)
-    create_node(3)
-    data = changeset_for_asset.changes.data
-    headers = ["Content-Type": "application/json"]
     
-    with_mock HTTPotion,
-    post: fn(_, _) -> %HTTPotion.Response{status_code: 201} end do
+    with_mock Node, [:passthrough], broadcast: fn _, _ -> nil end do
       {:ok, log_entry} =
         LogEntry.insert(
           id: 1,
           view_id: 1,
           command: "asset/create",
-          data: data,
+          data: changeset_for_asset.changes.data,
           prepare_confirmations: [%{node_id: 1, signature: "temp_signature"}],
           commit_confirmations: []
         )
-      body = LogEntry.as_json(log_entry) |> Poison.encode!
+      data = LogEntry.as_json(log_entry)
       
-      assert(
-        called(
-          HTTPotion.post(
-            "#{inital_node_url}/log",
-            headers: headers,
-            body: body
-          )
-        )
-      )
+      assert called(Node.broadcast(log_entry.id, data))
     end
   end
   
   test "a log entry marked as prepared broadcasts a commit to other nodes" do
-    node = create_node(2)
+    create_node(2)
     cs = changeset_for_asset
-    headers = ["Content-Type": "application/json"]
     
-    with_mock HTTPotion,
-    post: fn(_, _) -> %HTTPotion.Response{status_code: 201} end do
-      LogEntry.create(cs)      
+    with_mock Node, [:passthrough], broadcast: fn _, _ -> nil end do
+      LogEntry.create(cs)
       LogEntry.insert(
         id: 1,
         view_id: 1,
@@ -195,19 +168,10 @@ defmodule Hyperledger.LogEntryModelTest do
         prepare_confirmations: [%{node_id: 2, signature: "temp_signature"}],
         commit_confirmations: []
       )
-      
       log_entry = Repo.get(LogEntry, 1)
-      body = LogEntry.as_json(log_entry) |> Poison.encode!
+      data = LogEntry.as_json(log_entry)
       
-      assert(
-        called(
-          HTTPotion.post(
-            "#{node.url}/log",
-            headers: headers,
-            body: body
-          )
-        )
-      )
+      assert called(Node.broadcast(log_entry.id, data))
     end
   end
   
