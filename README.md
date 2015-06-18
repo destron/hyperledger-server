@@ -28,7 +28,7 @@ The server should now be running at `localhost:4000`.
 There are four core concepts behind the Hyperledger domain model:
 
 1. Assets — assets are defined by a contract document. The document is hashed
-   with SAH256 and this has is used as the asset identifier. Contract documents
+   with SHA256 and this has is used as the asset identifier. Contract documents
    can be any type of file, but the preferred type is a JSON document which is
    easily parseable by machines and people. Hyperledger does not store the
    document itself, only the hash. This enables you to keep the details of the
