@@ -4,6 +4,8 @@ This software has known bugs and is no longer maintained. We are leaving it up
 for reference for now, but we will not be fixing issues or accepting pull
 requests.
 
+We are redeveloping Hyperledger as part of the acquisition of Hyper by Digital Asset Holdings. We plan to open source the reimplementation once it approaches a stable state.
+
 # Hyperledger Reference Implementation
 
 This is the reference implementation of Hyperledger. Hyperledger is a protocol
