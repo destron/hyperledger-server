@@ -1,3 +1,9 @@
+# WARNING: THIS REPO IS NO LONGER MAINTAINED
+
+This software has known bugs and is no longer maintained. We are leaving it up
+for reference for now, but we will not be fixing issues or accepting pull
+requests.
+
 # Hyperledger Reference Implementation
 
 This is the reference implementation of Hyperledger. Hyperledger is a protocol
